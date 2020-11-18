@@ -211,10 +211,13 @@ def setdefaults(test):
     if test['function'] in ('asum_strided_batched', 'nrm2_strided_batched',
                             'scal_strided_batched', 'swap_strided_batched',
                             'copy_strided_batched', 'dot_strided_batched',
-                            'dotc_strided_batched', 'rot_strided_batched',
+                            'dotc_strided_batched', 'dot_strided_batched_ex',
+                            'dotc_strided_batched_ex', 'rot_strided_batched',
+                            'rot_strided_batched_ex',
                             'rotm_strided_batched', 'iamax_strided_batched',
                             'iamin_strided_batched', 'axpy_strided_batched',
-                            'axpy_strided_batched_ex', 'scal_strided_batched_ex'):
+                            'axpy_strided_batched_ex', 'nrm2_strided_batched_ex',
+                            'scal_strided_batched_ex'):
         setkey_product(test, 'stride_x', ['N', 'incx', 'stride_scale'])
         setkey_product(test, 'stride_y', ['N', 'incy', 'stride_scale'])
         # we are using stride_c for param in rotm
@@ -244,7 +247,8 @@ def setdefaults(test):
         if test['function'] in ('gbmv_strided_batched'):
             setkey_product(test, 'stride_a', ['lda', 'N', 'stride_scale'])
 
-    elif test['function'] in ('hemv_strided_batched', 'hbmv_strided_batched'):
+    elif test['function'] in ('hemv_strided_batched', 'hbmv_strided_batched',
+                              'sbmv_strided_batched'):
         if all([x in test for x in ('N', 'incx', 'incy', 'stride_scale')]):
             setkey_product(test, 'stride_x', ['N', 'incx', 'stride_scale'])
             setkey_product(test, 'stride_y', ['N', 'incy', 'stride_scale'])

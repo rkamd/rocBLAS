@@ -47,7 +47,7 @@ void testing_trsm_batched_ex(const Arguments& arg)
     size_t      size_A = lda * size_t(K);
     size_t      size_B = ldb * size_t(N);
 
-    rocblas_local_handle handle(arg.atomics_mode);
+    rocblas_local_handle handle{arg};
 
     // check here to prevent undefined memory allocation error
     bool invalid_size = M < 0 || N < 0 || lda < K || ldb < M || batch_count < 0;
@@ -277,7 +277,7 @@ void testing_trsm_batched_ex(const Arguments& arg)
         CHECK_HIP_ERROR(dXorB.transfer_from(hXorB_1));
 
         hipStream_t rocblas_stream;
-        rocblas_get_stream(handle, &rocblas_stream);
+        CHECK_ROCBLAS_ERROR(rocblas_get_stream(handle, &rocblas_stream));
 
         for(int b = 0; b < batch_count; b++)
         {

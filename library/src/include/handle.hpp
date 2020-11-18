@@ -18,7 +18,9 @@
 #include <utility>
 
 // Whether rocBLAS can reallocate device memory on demand, at the cost of only
-// allowing one allocation at a time, and at the cost of potential synchronization
+// allowing one allocation at a time, and at the cost of potential synchronization.
+// If this is 0, then stack-like allocation is allowed, but reallocation on demand
+// does not occur.
 #define ROCBLAS_REALLOC_ON_DEMAND 1
 
 // Round up size to the nearest MIN_CHUNK_SIZE
@@ -32,6 +34,17 @@ constexpr size_t roundup_device_memory_size(size_t size)
 struct rocblas_device_malloc_base
 {
 };
+
+// enum representing state of rocBLAS device memory ownership
+enum class rocblas_device_memory_ownership
+{
+    rocblas_managed,
+    user_managed,
+    user_owned,
+};
+
+// helper function in handle.cpp
+static rocblas_status free_existing_device_memory(rocblas_handle);
 
 /*******************************************************************************
  * \brief rocblas_handle is a structure holding the rocblas library context.
@@ -53,6 +66,7 @@ private:
     };
 
     // Class for saving and restoring default device ID
+    // clang-format off
     class [[nodiscard]] _rocblas_saved_device_id
     {
         int device_id;
@@ -77,9 +91,7 @@ private:
         }
 
         // Move constructor
-        // clang-format off
         _rocblas_saved_device_id(_rocblas_saved_device_id&& other)
-            // clang-format on
             : device_id(other.device_id)
             , old_device_id(other.old_device_id)
         {
@@ -90,8 +102,10 @@ private:
         _rocblas_saved_device_id& operator=(const _rocblas_saved_device_id&) = delete;
         _rocblas_saved_device_id& operator=(_rocblas_saved_device_id&&) = delete;
     };
+    // clang-format on
 
     // Class for temporarily modifying a state, restoring it on destruction
+    // clang-format off
     template <typename STATE>
     class [[nodiscard]] _pushed_state
     {
@@ -100,9 +114,7 @@ private:
 
     public:
         // Constructor
-        // clang-format off
         _pushed_state(STATE& state, STATE new_state)
-            // clang-format on
             : statep(&state)
             , old_state(std::move(state))
         {
@@ -123,9 +135,7 @@ private:
         }
 
         // Move constructor
-        // clang-format off
         _pushed_state(_pushed_state&& other)
-            // clang-format on
             : statep(other.statep)
             , old_state(std::move(other.old_state))
         {
@@ -136,19 +146,20 @@ private:
         _pushed_state& operator=(const _pushed_state&) = delete;
         _pushed_state& operator=(_pushed_state&&) = delete;
     };
+    // clang-format on
 
 public:
     _rocblas_handle();
     ~_rocblas_handle();
+
+    _rocblas_handle(const _rocblas_handle&) = delete;
+    _rocblas_handle& operator=(const _rocblas_handle&) = delete;
 
     // Set the HIP default device ID to the handle's device ID, and restore on exit
     auto push_device_id()
     {
         return _rocblas_saved_device_id(device);
     }
-
-    // rocblas by default take the system default stream 0 users cannot create
-    hipStream_t rocblas_stream = 0;
 
     // hipEvent_t pointers (for internal use only)
     hipEvent_t startEvent = nullptr;
@@ -163,23 +174,37 @@ public:
     // default atomics mode allows atomic operations
     rocblas_atomics_mode atomics_mode = rocblas_atomics_allowed;
 
+    // default check_numerics_mode is no numeric_check
+    rocblas_check_numerics_mode check_numerics = rocblas_check_numerics_mode_no_check;
+
     // logging streams
     std::unique_ptr<rocblas_ostream> log_trace_os;
     std::unique_ptr<rocblas_ostream> log_bench_os;
     std::unique_ptr<rocblas_ostream> log_profile_os;
     void                             init_logging();
+    void                             init_check_numerics();
 
     // C interfaces for manipulating device memory
     friend rocblas_status(::rocblas_start_device_memory_size_query)(_rocblas_handle*);
     friend rocblas_status(::rocblas_stop_device_memory_size_query)(_rocblas_handle*, size_t*);
+    friend rocblas_status(::rocblas_set_solution_fitness_query)(_rocblas_handle*, double*);
     friend rocblas_status(::rocblas_get_device_memory_size)(_rocblas_handle*, size_t*);
     friend rocblas_status(::rocblas_set_device_memory_size)(_rocblas_handle*, size_t);
+    friend rocblas_status(::free_existing_device_memory)(rocblas_handle);
+    friend rocblas_status(::rocblas_set_workspace)(_rocblas_handle*, void*, size_t);
     friend bool(::rocblas_is_managing_device_memory)(_rocblas_handle*);
+    friend rocblas_status(::rocblas_set_stream)(_rocblas_handle*, hipStream_t);
 
     // Returns whether the current kernel call is a device memory size query
     bool is_device_memory_size_query() const
     {
         return device_memory_size_query;
+    }
+
+    // Get the solution fitness query
+    auto* get_solution_fitness_query() const
+    {
+        return solution_fitness_query;
     }
 
     // Sets the optimal size(s) of device memory for a kernel call
@@ -221,17 +246,29 @@ public:
         return _pushed_state<bool>(any_order, new_any_order);
     }
 
+    // Return the current stream
+    hipStream_t get_stream() const
+    {
+        return stream;
+    }
+
 private:
     // device memory work buffer
     static constexpr size_t DEFAULT_DEVICE_MEMORY_SIZE = 32 * 1024 * 1024;
 
     // Variables holding state of device memory allocation
-    void*  device_memory                    = nullptr;
-    size_t device_memory_size               = 0;
-    size_t device_memory_in_use             = 0;
-    bool   device_memory_size_query         = false;
-    bool   device_memory_is_rocblas_managed = false;
-    size_t device_memory_query_size;
+    void*                           device_memory            = nullptr;
+    size_t                          device_memory_size       = 0;
+    size_t                          device_memory_in_use     = 0;
+    bool                            device_memory_size_query = false;
+    rocblas_device_memory_ownership device_memory_owner;
+    size_t                          device_memory_query_size;
+
+    // Solution fitness query (used for internal testing)
+    double* solution_fitness_query = nullptr;
+
+    // rocblas by default take the system default stream 0 users cannot create
+    hipStream_t stream = 0;
 
 #if ROCBLAS_REALLOC_ON_DEMAND
     // Helper for device memory allocator
@@ -242,9 +279,10 @@ private:
     const int device;
 
     // Opaque smart allocator class to perform device memory allocations
+    // clang-format off
     class [[nodiscard]] _device_malloc : public rocblas_device_malloc_base
     {
-    public:
+    protected:
         // Order is important:
         rocblas_handle handle;
         size_t         prev_device_memory_in_use;
@@ -320,9 +358,7 @@ private:
         // from a variable, then there must not be any alive allocations made
         // between the initialization of the variable and the object that it
         // moves to, or the LIFO ordering will be violated and flagged.
-        // clang-format off
         _device_malloc(_device_malloc&& other) noexcept
-            // clang-format on
             : handle(other.handle)
             , prev_device_memory_in_use(other.prev_device_memory_in_use)
             , size(other.size)
@@ -334,9 +370,7 @@ private:
 
         // Move assignment is allowed as long as the object being assigned to
         // is 0-sized or an unsuccessful previous allocation.
-        // clang-format off
         _device_malloc& operator=(_device_malloc&& other) & noexcept
-        // clang-format on
         {
             this->~_device_malloc();
             return *new(this) _device_malloc(std::move(other));
@@ -375,34 +409,30 @@ private:
         // void *p = (void*) handle->device_malloc(), which is a dangling pointer.
 
         // Conversion to bool to tell if the allocation succeeded
-        // clang-format off
         explicit operator bool() &
-        // clang-format on
         {
             return success;
         }
 
         // Return the ith pointer
-        // clang-format off
         void*& operator[](size_t i) &
-        // clang-format on
         {
             return pointers.at(i);
         }
 
         // Conversion to any pointer type (if pointers.size() == 1)
         template <typename T>
-        // clang-format off
         explicit operator T*() &
-        // clang-format on
         {
             // Index 1 - pointers.size() is used to make at() throw if size() != 1
             // but to otherwise return the first element.
             return static_cast<T*>(pointers.at(1 - pointers.size()));
         }
     };
+    // clang-format on
 
     // For HPA kernel calls, all available device memory is allocated and passed to Tensile
+    // clang-format off
     class [[nodiscard]] _gsu_malloc final : _device_malloc
     {
     public:
@@ -423,10 +453,9 @@ private:
         }
 
         // Move constructor allows initialization by rvalues and returns from functions
-        // clang-format off
         _gsu_malloc(_gsu_malloc&&) = default;
-        // clang-format on
     };
+    // clang-format on
 
 public:
     // Allocate one or more sizes

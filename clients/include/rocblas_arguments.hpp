@@ -63,6 +63,9 @@ struct Arguments
     char diag;
 
     rocblas_int batch_count;
+    size_t      threads;
+    size_t      streams;
+    size_t      devices;
 
     rocblas_int stride_a; //  stride_a > transA == 'N' ? lda * K : lda * M
     rocblas_int stride_b; //  stride_b > transB == 'N' ? ldb * N : ldb * K
@@ -91,6 +94,7 @@ struct Arguments
     char                   known_bug_platforms[64];
     bool                   c_noalias_d;
     rocblas_atomics_mode   atomics_mode;
+    size_t                 user_allocated_workspace;
 
     /*************************************************************************
      *                     End Of Arguments                                  *
@@ -128,6 +132,9 @@ struct Arguments
     OPER(uplo) SEP                   \
     OPER(diag) SEP                   \
     OPER(batch_count) SEP            \
+    OPER(threads) SEP                \
+    OPER(streams) SEP                \
+    OPER(devices) SEP                \
     OPER(stride_a) SEP               \
     OPER(stride_b) SEP               \
     OPER(stride_c) SEP               \
@@ -149,7 +156,8 @@ struct Arguments
     OPER(initialization) SEP         \
     OPER(known_bug_platforms) SEP    \
     OPER(c_noalias_d) SEP            \
-    OPER(atomics_mode)
+    OPER(atomics_mode) SEP           \
+    OPER(user_allocated_workspace)
 
     // clang-format on
 

@@ -77,25 +77,6 @@ if( BUILD_WITH_TENSILE )
     target_link_libraries( Tensile PRIVATE hip::device )
   endif()
 
-  if( CMAKE_CXX_COMPILER MATCHES ".*/hcc$" )
-    # Remove following when hcc is fixed; hcc emits following spurious warning ROCm v1.6.1
-    # "clang-5.0: warning: argument unused during compilation: '-isystem /opt/rocm/include'"
-    # target_compile_options( Tensile PRIVATE -Wno-unused-command-line-argument -fno-gpu-rdc -Wno-deprecated-declarations)
-    foreach( target ${ROCBLAS_GPUS} )
-      if( BUILD_WITH_TENSILE_HOST )
-          # Remove following when hcc is fixed; hcc emits following spurious warning ROCm v1.6.1
-          # "clang-5.0: warning: argument unused during compilation: '-isystem /opt/rocm/include'"
-          target_compile_options( TensileHost PRIVATE -Wno-unused-command-line-argument -fno-gpu-rdc -Wno-deprecated-declarations)
-          target_compile_options( TensileHost PRIVATE --amdgpu-target=${target} )
-      else()
-          # Remove following when hcc is fixed; hcc emits following spurious warning ROCm v1.6.1
-          # "clang-5.0: warning: argument unused during compilation: '-isystem /opt/rocm/include'"
-          target_compile_options( Tensile PRIVATE -Wno-unused-command-line-argument -fno-gpu-rdc -Wno-deprecated-declarations)
-          target_compile_options( Tensile PRIVATE --amdgpu-target=${target} )
-      endif()
-    endforeach( )
-  endif( )
-
   if( ROCBLAS_SHARED_LIBS )
     set( BUILD_SHARED_LIBS ON )
     if( BUILD_WITH_TENSILE_HOST )
@@ -149,9 +130,18 @@ set (rocblas_ex_source_no_tensile
     blas_ex/rocblas_axpy_ex.cpp
     blas_ex/rocblas_axpy_batched_ex.cpp
     blas_ex/rocblas_axpy_strided_batched_ex.cpp
+    blas_ex/rocblas_dot_ex.cpp
+    blas_ex/rocblas_dot_batched_ex.cpp
+    blas_ex/rocblas_dot_strided_batched_ex.cpp
+    blas_ex/rocblas_rot_ex.cpp
+    blas_ex/rocblas_rot_batched_ex.cpp
+    blas_ex/rocblas_rot_strided_batched_ex.cpp
     blas_ex/rocblas_scal_ex.cpp
     blas_ex/rocblas_scal_batched_ex.cpp
     blas_ex/rocblas_scal_strided_batched_ex.cpp
+    blas_ex/rocblas_nrm2_ex.cpp
+    blas_ex/rocblas_nrm2_batched_ex.cpp
+    blas_ex/rocblas_nrm2_strided_batched_ex.cpp
 )
 
 set( rocblas_blas3_source_no_tensile
@@ -262,6 +252,7 @@ set( rocblas_auxiliary_source
   rocblas_auxiliary.cpp
   buildinfo.cpp
   rocblas_ostream.cpp
+  check_numerics_vector.cpp
 )
 
 set( rocblas_blas1_source
@@ -306,13 +297,7 @@ set( rocblas_blas1_source
   blas1/rocblas_swap_strided_batched.cpp
 )
 
-set(rocblas_f90_source
-    rocblas_module.f90
-)
-
 prepend_path( ".." rocblas_headers_public relative_rocblas_headers_public )
-
-
 
 add_library( rocblas
   ${rocblas_ex_source}
@@ -324,9 +309,6 @@ add_library( rocblas
   ${relative_rocblas_headers_public}
   ${rocblas_auxiliary_source}
 )
-
-# Create rocBLAS Fortran module
-add_library(rocblas_fortran ${rocblas_f90_source})
 
 add_library( roc::rocblas ALIAS rocblas )
 
@@ -341,14 +323,8 @@ target_link_libraries( rocblas PRIVATE hip::device --rtlib=compiler-rt --unwindl
 
 set_target_properties( rocblas PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED ON )
 
-if( CMAKE_CXX_COMPILER MATCHES ".*/hcc$" )
-  # Remove following when hcc is fixed; hcc emits following spurious warning ROCm v1.6.1
-  # "clang-5.0: warning: argument unused during compilation: '-isystem /opt/rocm/include'"
-  target_compile_options( rocblas PRIVATE -Wno-unused-command-line-argument -fno-gpu-rdc )
-  foreach( target ${ROCBLAS_GPUS} )
-    target_compile_options( rocblas PRIVATE --amdgpu-target=${target} )
-  endforeach( )
-endif( )
+
+#  -fno-gpu-rdc compiler option was used with hcc, so revisit feature at some point
 
 if( CMAKE_CXX_COMPILER MATCHES ".*/hipcc$" )
   # GCC or hip-clang needs specific flags to turn on f16c intrinsics
@@ -423,10 +399,7 @@ if( BUILD_WITH_TENSILE )
   else()
     target_link_libraries( rocblas PRIVATE Tensile )
   endif()
-  target_compile_definitions( rocblas PRIVATE BUILD_WITH_TENSILE=1 )
-  if( BUILD_WITH_TENSILE_HOST )
-    target_compile_definitions( rocblas PUBLIC USE_TENSILE_HOST )
-  endif()
+  target_compile_definitions( rocblas PRIVATE ${TENSILE_DEFINES} )
 endif()
 
 target_compile_definitions( rocblas PRIVATE ROCM_USE_FLOAT16 )
@@ -442,24 +415,24 @@ generate_export_header( rocblas EXPORT_FILE_NAME ${PROJECT_BINARY_DIR}/include/i
 
 # generate header with prototypes for export reuse
 set( ROCBLAS_PROTO_TEMPLATES "${PROJECT_BINARY_DIR}/include/internal/rocblas-exported-proto.hpp" )
-add_custom_target( rocblas_proto_templates
-  BYPRODUCTS ${ROCBLAS_PROTO_TEMPLATES}
+add_custom_command(OUTPUT ${ROCBLAS_PROTO_TEMPLATES}
   COMMAND python3 template-proto.py ${CMAKE_CURRENT_SOURCE_DIR}/blas3/Tensile/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/blas3/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/blas2/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/blas1/*.hpp > ${ROCBLAS_PROTO_TEMPLATES}
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/blas3/Tensile/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/blas3/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/blas2/*.hpp ${CMAKE_CURRENT_SOURCE_DIR}/blas1/*.hpp
   COMMENT "Generating prototypes from ${CMAKE_CURRENT_SOURCE_DIR}."
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   )
+add_custom_target( rocblas_proto_templates DEPENDS ${ROCBLAS_PROTO_TEMPLATES} )
 add_dependencies( rocblas rocblas_proto_templates )
 
 # generate rocblas_device_malloc.hpp header for device memory allocation
 set( ROCBLAS_DEVICE_MALLOC "${PROJECT_BINARY_DIR}/include/internal/rocblas_device_malloc.hpp" )
-add_custom_target( rocblas_device_malloc
-  BYPRODUCTS ${ROCBLAS_DEVICE_MALLOC}
+add_custom_command( OUTPUT ${ROCBLAS_DEVICE_MALLOC}
   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/include/rocblas_device_malloc.hpp ${ROCBLAS_DEVICE_MALLOC}
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/rocblas_device_malloc.hpp
   COMMENT "Generating ${ROCBLAS_DEVICE_MALLOC}"
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+add_custom_target( rocblas_device_malloc DEPENDS ${ROCBLAS_DEVICE_MALLOC} )
 add_dependencies( rocblas rocblas_device_malloc )
 
 if( NOT BUILD_SHARED_LIBS )
@@ -488,7 +461,7 @@ endif( )
 # Installation
 
 # Force installation of .f90 module file
-install(FILES "rocblas_module.f90"
+install(FILES "../include/rocblas_module.f90"
         DESTINATION "rocblas/include"
 )
 

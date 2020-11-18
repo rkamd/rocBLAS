@@ -30,7 +30,7 @@ void testing_tpsv_batched_bad_arg(const Arguments& arg)
     const rocblas_fill      uplo        = rocblas_fill_lower;
     const rocblas_diagonal  diag        = rocblas_diagonal_non_unit;
 
-    rocblas_local_handle handle(arg.atomics_mode);
+    rocblas_local_handle handle{arg};
 
     size_t size_A = N * size_t(N);
 
@@ -76,7 +76,7 @@ void testing_tpsv_batched(const Arguments& arg)
     rocblas_diagonal  diag   = char2rocblas_diagonal(char_diag);
 
     rocblas_status       status;
-    rocblas_local_handle handle(arg.atomics_mode);
+    rocblas_local_handle handle{arg};
 
     // check here to prevent undefined memory allocation error
     bool invalid_size = N < 0 || !incx || batch_count < 0;
@@ -95,7 +95,6 @@ void testing_tpsv_batched(const Arguments& arg)
     size_t abs_incx = size_t(incx >= 0 ? incx : -incx);
 
     double gpu_time_used, cpu_time_used;
-    double rocblas_gflops, cblas_gflops, rocblas_bandwidth;
     double rocblas_error;
     double error_eps_multiplier    = 40.0;
     double residual_eps_multiplier = 20.0;
@@ -247,9 +246,7 @@ void testing_tpsv_batched(const Arguments& arg)
                                     incx,
                                     batch_count);
 
-        gpu_time_used     = (get_time_us_sync(stream) - gpu_time_used) / number_hot_calls;
-        rocblas_gflops    = batch_count * tpsv_gflop_count<T>(N) / gpu_time_used * 1e6;
-        rocblas_bandwidth = batch_count * tpsv_gbyte_count<T>(N) / gpu_time_used * 1e6;
+        gpu_time_used = get_time_us_sync(stream) - gpu_time_used;
 
         // CPU cblas
         cpu_time_used = get_time_us_no_sync();
@@ -259,24 +256,15 @@ void testing_tpsv_batched(const Arguments& arg)
                 cblas_tpsv<T>(uplo, transA, diag, N, hA[b], cpu_x_or_b[b], incx);
 
         cpu_time_used = get_time_us_no_sync() - cpu_time_used;
-        cblas_gflops  = batch_count * tpsv_gflop_count<T>(N) / cpu_time_used * 1e6;
 
-        // only norm_check return an norm error, unit check won't return anything
-        rocblas_cout << ",incx,uplo,transA,diag,batch_count,rocblas-Gflops,rocblas-GB/s,us";
-
-        if(arg.norm_check)
-            rocblas_cout << ",CPU-Gflops,us,norm_error_host_ptr,norm_error_dev_ptr";
-
-        rocblas_cout << std::endl;
-
-        rocblas_cout << N << ',' << incx << ',' << char_uplo << ',' << char_transA << ','
-                     << char_diag << ',' << batch_count << ',' << rocblas_gflops << ","
-                     << rocblas_bandwidth << "," << gpu_time_used;
-
-        if(arg.norm_check)
-            rocblas_cout << "," << cblas_gflops << "," << cpu_time_used << "," << max_err_1 << ","
-                         << max_err_2;
-
-        rocblas_cout << std::endl;
+        ArgumentModel<e_uplo, e_transA, e_diag, e_N, e_incx, e_batch_count>{}.log_args<T>(
+            rocblas_cout,
+            arg,
+            gpu_time_used,
+            tpsv_gflop_count<T>(N),
+            0.0,
+            cpu_time_used,
+            max_err_1,
+            max_err_2);
     }
 }

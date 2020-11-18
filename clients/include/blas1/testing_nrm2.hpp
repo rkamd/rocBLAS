@@ -25,7 +25,7 @@ void testing_nrm2_bad_arg(const Arguments& arg)
     rocblas_int         incx      = 1;
     static const size_t safe_size = 100;
 
-    rocblas_local_handle handle(arg.atomics_mode);
+    rocblas_local_handle handle{arg};
 
     device_vector<T>         dx(safe_size);
     device_vector<real_t<T>> d_rocblas_result(1);
@@ -58,7 +58,7 @@ void testing_nrm2(const Arguments& arg)
     double rocblas_error_1;
     double rocblas_error_2;
 
-    rocblas_local_handle handle(arg.atomics_mode);
+    rocblas_local_handle handle{arg};
 
     // check to prevent undefined memory allocation error
     if(N <= 0 || incx <= 0)
@@ -107,11 +107,16 @@ void testing_nrm2(const Arguments& arg)
         cblas_nrm2<T>(N, hx, incx, &cpu_result);
         cpu_time_used = get_time_us_no_sync() - cpu_time_used;
 
-        //      allowable error is sqrt of precision. This is based on nrm2 calculating the
-        //      square root of a sum. It is assumed that the sum will have accuracy =approx=
-        //      precision, so nrm2 will have accuracy =approx= sqrt(precision)
-        real_t<T> abs_error
-            = pow(10.0, -(std::numeric_limits<real_t<T>>::digits10 / 2.0)) * cpu_result;
+        real_t<T> abs_result = cpu_result > 0 ? cpu_result : -cpu_result;
+        real_t<T> abs_error;
+        if(abs_result > 0)
+        {
+            abs_error = std::numeric_limits<real_t<T>>::epsilon() * N * abs_result;
+        }
+        else
+        {
+            abs_error = std::numeric_limits<real_t<T>>::epsilon() * N;
+        }
         real_t<T> tolerance = 2.0; //  accounts for rounding in reduction sum. depends on n.
             //  If test fails, try decreasing n or increasing tolerance.
         abs_error *= tolerance;

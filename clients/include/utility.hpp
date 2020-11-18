@@ -40,6 +40,7 @@
 // puts, putchar, fputs, printf, fprintf, vprintf, vfprintf: Use rocblas_cout or rocblas_cerr
 // sprintf, vsprintf: Possible buffer overflows; us snprintf or vsnprintf instead
 // strerror: Thread-unsafe; use snprintf / dprintf with %m or strerror_* alternatives
+// strsignal: Thread-unsafe; use sys_siglist[signal] instead
 // strtok: Thread-unsafe; use strtok_r
 // gmtime, ctime, asctime, localtime: Thread-unsafe
 // tmpnam: Thread-unsafe; use mkstemp or related functions instead
@@ -53,7 +54,7 @@
 #undef stderr
 #pragma GCC poison cout cerr clog stdout stderr gets puts putchar fputs fprintf printf sprintf    \
     vfprintf vprintf vsprintf perror strerror strtok gmtime ctime asctime localtime tmpnam putenv \
-        clearenv fcloseall ecvt fcvt sleep abort
+        clearenv fcloseall ecvt fcvt sleep abort strsignal
 #else
 // Suppress warnings about hipMalloc(), hipFree() except in rocblas-test and rocblas-bench
 #undef hipMalloc
@@ -73,27 +74,55 @@ static constexpr char LIMITED_MEMORY_STRING_GTEST[]
 /*! \brief  local handle which is automatically created and destroyed  */
 class rocblas_local_handle
 {
-    rocblas_handle handle;
+    rocblas_handle m_handle;
+    void*          m_memory = nullptr;
 
 public:
-    explicit rocblas_local_handle(rocblas_atomics_mode mode = rocblas_atomics_allowed)
+    rocblas_local_handle()
     {
-        rocblas_create_handle(&handle);
-        handle->atomics_mode = mode;
+        rocblas_create_handle(&m_handle);
+#ifdef GOOGLE_TEST
+        rocblas_test_set_stream(m_handle);
+#endif
     }
+
+    explicit rocblas_local_handle(const Arguments& arg)
+        : rocblas_local_handle()
+    {
+        // Set the atomics mode
+        if(rocblas_set_atomics_mode(m_handle, arg.atomics_mode) != rocblas_status_success)
+            throw rocblas_status_internal_error;
+
+        // If the test specifies user allocated workspace, allocate and use it
+        if(arg.user_allocated_workspace)
+        {
+            if((hipMalloc)(&m_memory, arg.user_allocated_workspace) != hipSuccess
+               || rocblas_set_workspace(m_handle, m_memory, arg.user_allocated_workspace)
+                      != rocblas_status_success)
+                throw rocblas_status_memory_error;
+        }
+    }
+
     ~rocblas_local_handle()
     {
-        rocblas_destroy_handle(handle);
+        if(m_memory)
+            (hipFree)(m_memory);
+        rocblas_destroy_handle(m_handle);
     }
+
+    rocblas_local_handle(const rocblas_local_handle&) = delete;
+    rocblas_local_handle(rocblas_local_handle&&)      = delete;
+    rocblas_local_handle& operator=(const rocblas_local_handle&) = delete;
+    rocblas_local_handle& operator=(rocblas_local_handle&&) = delete;
 
     // Allow rocblas_local_handle to be used anywhere rocblas_handle is expected
     operator rocblas_handle&()
     {
-        return handle;
+        return m_handle;
     }
     operator const rocblas_handle&() const
     {
-        return handle;
+        return m_handle;
     }
 };
 
@@ -109,7 +138,7 @@ void set_device(rocblas_int device_id);
             rocblas sync CPU and device and use more accurate CPU timer*/
 
 /*! \brief  CPU Timer(in microsecond): synchronize with the default device and return wall time */
-double get_time_us_sync_device(void);
+double get_time_us_sync_device();
 
 /*! \brief  CPU Timer(in microsecond): synchronize with given queue/stream and return wall time */
 double get_time_us_sync(hipStream_t stream);
