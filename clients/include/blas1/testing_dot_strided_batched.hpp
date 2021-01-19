@@ -1,6 +1,8 @@
 /* ************************************************************************
- * Copyright 2018-2020 Advanced Micro Devices, Inc.
+ * Copyright 2018-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
+#pragma once
 
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
@@ -19,11 +21,11 @@
 template <typename T, bool CONJ = false>
 void testing_dot_strided_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN                  = arg.fortran;
-    auto rocblas_dot_strided_batched_fn = FORTRAN ? (CONJ ? rocblas_dotc_strided_batched<T, true>
-                                                          : rocblas_dot_strided_batched<T, true>)
-                                                  : (CONJ ? rocblas_dotc_strided_batched<T, false>
-                                                          : rocblas_dot_strided_batched<T, false>);
+    auto rocblas_dot_strided_batched_fn = arg.fortran
+                                              ? (CONJ ? rocblas_dotc_strided_batched<T, true>
+                                                      : rocblas_dot_strided_batched<T, true>)
+                                              : (CONJ ? rocblas_dotc_strided_batched<T, false>
+                                                      : rocblas_dot_strided_batched<T, false>);
 
     rocblas_int N           = 100;
     rocblas_int incx        = 1;
@@ -71,11 +73,11 @@ void testing_dotc_strided_batched_bad_arg(const Arguments& arg)
 template <typename T, bool CONJ = false>
 void testing_dot_strided_batched(const Arguments& arg)
 {
-    const bool FORTRAN                  = arg.fortran;
-    auto rocblas_dot_strided_batched_fn = FORTRAN ? (CONJ ? rocblas_dotc_strided_batched<T, true>
-                                                          : rocblas_dot_strided_batched<T, true>)
-                                                  : (CONJ ? rocblas_dotc_strided_batched<T, false>
-                                                          : rocblas_dot_strided_batched<T, false>);
+    auto rocblas_dot_strided_batched_fn = arg.fortran
+                                              ? (CONJ ? rocblas_dotc_strided_batched<T, true>
+                                                      : rocblas_dot_strided_batched<T, true>)
+                                              : (CONJ ? rocblas_dotc_strided_batched<T, false>
+                                                      : rocblas_dot_strided_batched<T, false>);
 
     rocblas_int    N           = arg.N;
     rocblas_int    incx        = arg.incx;
@@ -148,8 +150,16 @@ void testing_dot_strided_batched(const Arguments& arg)
 
     // Initial Data on CPU
     rocblas_seedrand();
-    rocblas_init<T>(hx, 1, N, abs_incx, stride_x, batch_count);
-    rocblas_init<T>(hy, 1, N, abs_incy, stride_y, batch_count);
+    if(rocblas_isnan(arg.alpha))
+    {
+        rocblas_init_nan<T>(hx, 1, N, abs_incx, stride_x, batch_count);
+        rocblas_init_nan<T>(hy, 1, N, abs_incy, stride_y, batch_count);
+    }
+    else
+    {
+        rocblas_init<T>(hx, 1, N, abs_incx, stride_x, batch_count);
+        rocblas_init<T>(hy, 1, N, abs_incy, stride_y, batch_count);
+    }
 
     // copy data from CPU to device, does not work for incx != 1
     CHECK_HIP_ERROR(hipMemcpy(dx, hx, sizeof(T) * size_x, hipMemcpyHostToDevice));

@@ -2,6 +2,8 @@
  * Copyright 2016-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -19,8 +21,7 @@
 template <typename T>
 void testing_tpsv_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN         = arg.fortran;
-    auto       rocblas_tpsv_fn = FORTRAN ? rocblas_tpsv<T, true> : rocblas_tpsv<T, false>;
+    auto rocblas_tpsv_fn = arg.fortran ? rocblas_tpsv<T, true> : rocblas_tpsv<T, false>;
 
     const rocblas_int       N      = 100;
     const rocblas_int       incx   = 1;
@@ -54,8 +55,7 @@ void testing_tpsv_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_tpsv(const Arguments& arg)
 {
-    const bool FORTRAN         = arg.fortran;
-    auto       rocblas_tpsv_fn = FORTRAN ? rocblas_tpsv<T, true> : rocblas_tpsv<T, false>;
+    auto rocblas_tpsv_fn = arg.fortran ? rocblas_tpsv<T, true> : rocblas_tpsv<T, false>;
 
     rocblas_int N           = arg.N;
     rocblas_int incx        = arg.incx;
@@ -202,13 +202,14 @@ void testing_tpsv(const Arguments& arg)
 
         cpu_time_used = get_time_us_no_sync() - cpu_time_used;
 
-        ArgumentModel<e_uplo, e_transA, e_diag, e_N, e_incx>{}.log_args<T>(rocblas_cout,
-                                                                           arg,
-                                                                           gpu_time_used,
-                                                                           tpsv_gflop_count<T>(N),
-                                                                           0.0,
-                                                                           cpu_time_used,
-                                                                           max_err_1,
-                                                                           max_err_2);
+        ArgumentModel<e_uplo, e_transA, e_diag, e_N, e_incx>{}.log_args<T>(
+            rocblas_cout,
+            arg,
+            gpu_time_used,
+            tpsv_gflop_count<T>(N),
+            ArgumentLogging::NA_value,
+            cpu_time_used,
+            max_err_1,
+            max_err_2);
     }
 }

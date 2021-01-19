@@ -1,6 +1,8 @@
 /* ************************************************************************
- * Copyright 2018-2020 Advanced Micro Devices, Inc.
+ * Copyright 2018-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
+#pragma once
 
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
@@ -18,9 +20,8 @@
 template <typename T>
 void testing_asum_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_asum_batched_fn
-        = FORTRAN ? rocblas_asum_batched<T, true> : rocblas_asum_batched<T, false>;
+    auto rocblas_asum_batched_fn
+        = arg.fortran ? rocblas_asum_batched<T, true> : rocblas_asum_batched<T, false>;
 
     rocblas_int         N                = 100;
     rocblas_int         incx             = 1;
@@ -50,9 +51,8 @@ void testing_asum_batched_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_asum_batched(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_asum_batched_fn
-        = FORTRAN ? rocblas_asum_batched<T, true> : rocblas_asum_batched<T, false>;
+    auto rocblas_asum_batched_fn
+        = arg.fortran ? rocblas_asum_batched<T, true> : rocblas_asum_batched<T, false>;
 
     rocblas_int N           = arg.N;
     rocblas_int incx        = arg.incx;
@@ -95,7 +95,10 @@ void testing_asum_batched(const Arguments& arg)
     //
     // Initialize memory on host.
     //
-    rocblas_init(hx);
+    if(rocblas_isnan(arg.alpha))
+        rocblas_init_nan<T>(hx);
+    else
+        rocblas_init(hx);
 
     //
     // Transfer from host to device.

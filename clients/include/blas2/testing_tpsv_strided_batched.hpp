@@ -2,6 +2,8 @@
  * Copyright 2016-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -19,9 +21,8 @@
 template <typename T>
 void testing_tpsv_strided_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_tpsv_strided_batched_fn
-        = FORTRAN ? rocblas_tpsv_strided_batched<T, true> : rocblas_tpsv_strided_batched<T, false>;
+    auto rocblas_tpsv_strided_batched_fn = arg.fortran ? rocblas_tpsv_strided_batched<T, true>
+                                                       : rocblas_tpsv_strided_batched<T, false>;
 
     const rocblas_int       N           = 100;
     const rocblas_int       incx        = 1;
@@ -73,9 +74,8 @@ void testing_tpsv_strided_batched_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_tpsv_strided_batched(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_tpsv_strided_batched_fn
-        = FORTRAN ? rocblas_tpsv_strided_batched<T, true> : rocblas_tpsv_strided_batched<T, false>;
+    auto rocblas_tpsv_strided_batched_fn = arg.fortran ? rocblas_tpsv_strided_batched<T, true>
+                                                       : rocblas_tpsv_strided_batched<T, false>;
 
     rocblas_int N           = arg.N;
     rocblas_int incx        = arg.incx;
@@ -288,7 +288,7 @@ void testing_tpsv_strided_batched(const Arguments& arg)
                          arg,
                          gpu_time_used,
                          tpsv_gflop_count<T>(N),
-                         0.0,
+                         ArgumentLogging::NA_value,
                          cpu_time_used,
                          max_err_1,
                          max_err_2);

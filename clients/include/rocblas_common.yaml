@@ -325,6 +325,7 @@ Arguments:
   - uplo: c_char
   - diag: c_char
   - batch_count: rocblas_int
+  - HMM: c_bool
   - threads: c_size_t
   - streams: c_size_t
   - devices: c_size_t
@@ -389,11 +390,11 @@ Lists to not expand:
 
 # Defaults
 Defaults:
-  M: -1
-  N: -1
-  K: -1
-  KL: -1
-  KU: -1
+  M: 128
+  N: 128
+  K: 128
+  KL: 128
+  KU: 128
   incx: 0
   incy: 0
   incd: 0
@@ -407,7 +408,8 @@ Defaults:
   side: '*'
   uplo: '*'
   diag: '*'
-  batch_count: -1
+  batch_count: 1
+  HMM: false
   threads: 0
   streams: 0
   devices: 0

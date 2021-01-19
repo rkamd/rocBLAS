@@ -2,6 +2,8 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -19,9 +21,8 @@
 template <typename T, bool CONJ = false>
 void testing_ger_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
     // clang-format off
-    auto       rocblas_ger_fn = FORTRAN
+    auto rocblas_ger_fn = arg.fortran
                               ? (CONJ ? rocblas_ger<T, true, true> : rocblas_ger<T, false, true>)
                               : (CONJ ? rocblas_ger<T, true, false> : rocblas_ger<T, false, false>);
     // clang-format on
@@ -63,12 +64,9 @@ void testing_ger_bad_arg(const Arguments& arg)
 template <typename T, bool CONJ = false>
 void testing_ger(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    // clang-format off
-    auto       rocblas_ger_fn = FORTRAN
+    auto rocblas_ger_fn = arg.fortran
                               ? (CONJ ? rocblas_ger<T, true, true> : rocblas_ger<T, false, true>)
                               : (CONJ ? rocblas_ger<T, true, false> : rocblas_ger<T, false, false>);
-    // clang-format on
 
     rocblas_int M       = arg.M;
     rocblas_int N       = arg.N;
@@ -125,8 +123,17 @@ void testing_ger(const Arguments& arg)
     {
         rocblas_init<T>(hA_1, M, N, lda);
     }
-    rocblas_init<T>(hx, 1, M, abs_incx);
-    rocblas_init<T>(hy, 1, N, abs_incy);
+
+    if(arg.alpha_isnan<T>())
+    {
+        rocblas_init_nan<T>(hx, 1, M, abs_incx);
+        rocblas_init_nan<T>(hy, 1, N, abs_incy);
+    }
+    else
+    {
+        rocblas_init<T>(hx, 1, M, abs_incx);
+        rocblas_init<T>(hy, 1, N, abs_incy);
+    }
 
     // copy matrix is easy in STL; hA_gold = hA_1: save a copy in hA_gold which will be output of
     // CPU BLAS

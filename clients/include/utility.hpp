@@ -2,8 +2,7 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
-#ifndef _TESTING_UTILITY_H_
-#define _TESTING_UTILITY_H_
+#pragma once
 
 #include "../../library/src/include/utility.hpp"
 #include "cblas_interface.hpp"
@@ -63,12 +62,14 @@
 
 #define LIMITED_MEMORY_STRING "Error: Attempting to allocate more memory than available."
 #define TOO_MANY_DEVICES_STRING "Error: Too many devices requested."
+#define HMM_NOT_SUPPORTED "Error: HMM not supported."
 
 // TODO: This is dependent on internal gtest behaviour.
 // Compared with result.message() when a test ended. Note that "Succeeded\n" is
 // added to the beginning of the message automatically by gtest, so this must be compared.
 #define LIMITED_MEMORY_STRING_GTEST "Succeeded\n" LIMITED_MEMORY_STRING
 #define TOO_MANY_DEVICES_STRING_GTEST "Succeeded\n" TOO_MANY_DEVICES_STRING
+#define HMM_NOT_SUPPORTED_GTEST "Succeeded\n" HMM_NOT_SUPPORTED
 
 /* ============================================================================================ */
 /*! \brief  local handle which is automatically created and destroyed  */
@@ -361,5 +362,3 @@ void print_batched_matrix(const char*           name,
     }
     rocblas_cout << std::flush;
 }
-
-#endif

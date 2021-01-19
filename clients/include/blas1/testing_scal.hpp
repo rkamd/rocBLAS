@@ -1,6 +1,8 @@
 /* ************************************************************************
- * Copyright 2018-2020 Advanced Micro Devices, Inc.
+ * Copyright 2018-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
+#pragma once
 
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
@@ -70,7 +72,10 @@ void testing_scal(const Arguments& arg)
 
     // Initial Data on CPU
     rocblas_seedrand();
-    rocblas_init<T>(hx_1, 1, N, incx);
+    if(rocblas_isnan(arg.alpha))
+        rocblas_init_nan<T>(hx_1, 1, N, incx);
+    else
+        rocblas_init<T>(hx_1, 1, N, incx);
 
     // copy vector is easy in STL; hy_gold = hx: save a copy in hy_gold which will be output of CPU
     // BLAS
@@ -113,7 +118,7 @@ void testing_scal(const Arguments& arg)
 
         // CPU BLAS
         cpu_time_used = get_time_us_no_sync();
-        cblas_scal<T, U>(N, h_alpha, hy_gold, incx);
+        cblas_scal(N, h_alpha, (T*)hy_gold, incx);
         cpu_time_used = get_time_us_no_sync() - cpu_time_used;
 
         if(arg.unit_check)

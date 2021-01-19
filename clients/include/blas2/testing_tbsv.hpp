@@ -2,6 +2,8 @@
  * Copyright 2016-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "cblas_interface.hpp"
 #include "flops.hpp"
 #include "norm.hpp"
@@ -18,8 +20,7 @@
 template <typename T>
 void testing_tbsv_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN         = arg.fortran;
-    auto       rocblas_tbsv_fn = FORTRAN ? rocblas_tbsv<T, true> : rocblas_tbsv<T, false>;
+    auto rocblas_tbsv_fn = arg.fortran ? rocblas_tbsv<T, true> : rocblas_tbsv<T, false>;
 
     const rocblas_int       N      = 100;
     const rocblas_int       K      = 5;
@@ -56,8 +57,7 @@ void testing_tbsv_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_tbsv(const Arguments& arg)
 {
-    const bool FORTRAN         = arg.fortran;
-    auto       rocblas_tbsv_fn = FORTRAN ? rocblas_tbsv<T, true> : rocblas_tbsv<T, false>;
+    auto rocblas_tbsv_fn = arg.fortran ? rocblas_tbsv<T, true> : rocblas_tbsv<T, false>;
 
     rocblas_int N           = arg.N;
     rocblas_int K           = arg.K;
@@ -215,7 +215,7 @@ void testing_tbsv(const Arguments& arg)
             arg,
             gpu_time_used,
             tbsv_gflop_count<T>(N, K),
-            0.0,
+            ArgumentLogging::NA_value,
             cpu_time_used,
             max_err_1,
             max_err_2);

@@ -1,6 +1,8 @@
 /* ************************************************************************
- * Copyright 2018-2020 Advanced Micro Devices, Inc.
+ * Copyright 2018-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
+#pragma once
 
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
@@ -19,11 +21,8 @@
 template <typename Tx, typename Ty = Tx, typename Tr = Ty, typename Tex = Tr, bool CONJ = false>
 void testing_dot_ex_bad_arg(const Arguments& arg)
 {
-    // clang-format off
-    const bool FORTRAN        = arg.fortran;
-    auto       rocblas_dot_ex_fn = FORTRAN ? (CONJ ? rocblas_dotc_ex_fortran : rocblas_dot_ex_fortran)
-                                        : (CONJ ? rocblas_dotc_ex : rocblas_dot_ex);
-    // clang-format on
+    auto rocblas_dot_ex_fn = arg.fortran ? (CONJ ? rocblas_dotc_ex_fortran : rocblas_dot_ex_fortran)
+                                         : (CONJ ? rocblas_dotc_ex : rocblas_dot_ex);
 
     rocblas_datatype x_type         = rocblas_datatype_f32_r;
     rocblas_datatype y_type         = rocblas_datatype_f32_r;
@@ -96,11 +95,8 @@ void testing_dotc_ex_bad_arg(const Arguments& arg)
 template <typename Tx, typename Ty = Tx, typename Tr = Ty, typename Tex = Tr, bool CONJ = false>
 void testing_dot_ex(const Arguments& arg)
 {
-    // clang-format off
-    const bool FORTRAN        = arg.fortran;
-    auto       rocblas_dot_ex_fn = FORTRAN ? (CONJ ? rocblas_dotc_ex_fortran : rocblas_dot_ex_fortran)
-                                        : (CONJ ? rocblas_dotc_ex : rocblas_dot_ex);
-    // clang-format on
+    auto rocblas_dot_ex_fn = arg.fortran ? (CONJ ? rocblas_dotc_ex_fortran : rocblas_dot_ex_fortran)
+                                         : (CONJ ? rocblas_dotc_ex : rocblas_dot_ex);
 
     rocblas_datatype x_type         = arg.a_type;
     rocblas_datatype y_type         = arg.b_type;
@@ -169,8 +165,16 @@ void testing_dot_ex(const Arguments& arg)
 
     // Initial Data on CPU
     rocblas_seedrand();
-    rocblas_init<Tx>(hx, 1, N, abs_incx);
-    rocblas_init<Ty>(hy, 1, N, abs_incy);
+    if(rocblas_isnan(arg.alpha))
+    {
+        rocblas_init_nan<Tx>(hx, 1, N, abs_incx);
+        rocblas_init_nan<Ty>(hy, 1, N, abs_incy);
+    }
+    else
+    {
+        rocblas_init<Tx>(hx, 1, N, abs_incx);
+        rocblas_init<Ty>(hy, 1, N, abs_incy);
+    }
 
     // copy data from CPU to device, does not work for incx != 1
     CHECK_HIP_ERROR(hipMemcpy(dx, hx, sizeof(Tx) * size_x, hipMemcpyHostToDevice));

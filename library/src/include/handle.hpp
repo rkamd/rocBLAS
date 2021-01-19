@@ -2,8 +2,7 @@
  * Copyright 2016-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
-#ifndef _ROCBLAS_HANDLE_H_
-#define _ROCBLAS_HANDLE_H_
+#pragma once
 
 #include "rocblas.h"
 #include "rocblas_ostream.hpp"
@@ -341,7 +340,13 @@ private:
             : handle(handle)
             , prev_device_memory_in_use(handle->device_memory_in_use)
             , size(roundup_device_memory_size(total))
-            , success(size <= handle->device_memory_size - handle->device_memory_in_use)
+            , success(
+                    #if ROCBLAS_REALLOC_ON_DEMAND
+                        handle->device_allocator(size)
+                    #else
+                        size <= handle->device_memory_size - handle->device_memory_in_use
+                    #endif
+                     )
             , pointers(count,
                        success ? static_cast<char*>(handle->device_memory)
                                      + handle->device_memory_in_use
@@ -503,5 +508,3 @@ public:
 #define hipFree(ptr)                                                                               \
     _Pragma("GCC warning \"Direct use of hipFree in rocBLAS is deprecated; see CONTRIBUTING.md\"") \
         hipFree(ptr)
-
-#endif

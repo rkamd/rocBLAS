@@ -2,6 +2,8 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -18,12 +20,11 @@
 template <typename T, bool CONJ>
 void testing_ger_strided_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_ger_strided_batched_fn
-        = FORTRAN ? (CONJ ? rocblas_ger_strided_batched<T, true, true>
-                          : rocblas_ger_strided_batched<T, false, true>)
-                  : (CONJ ? rocblas_ger_strided_batched<T, true, false>
-                          : rocblas_ger_strided_batched<T, false, false>);
+    auto rocblas_ger_strided_batched_fn
+        = arg.fortran ? (CONJ ? rocblas_ger_strided_batched<T, true, true>
+                              : rocblas_ger_strided_batched<T, false, true>)
+                      : (CONJ ? rocblas_ger_strided_batched<T, true, false>
+                              : rocblas_ger_strided_batched<T, false, false>);
 
     rocblas_int M           = 100;
     rocblas_int N           = 100;
@@ -117,12 +118,11 @@ void testing_ger_strided_batched_bad_arg(const Arguments& arg)
 template <typename T, bool CONJ>
 void testing_ger_strided_batched(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_ger_strided_batched_fn
-        = FORTRAN ? (CONJ ? rocblas_ger_strided_batched<T, true, true>
-                          : rocblas_ger_strided_batched<T, false, true>)
-                  : (CONJ ? rocblas_ger_strided_batched<T, true, false>
-                          : rocblas_ger_strided_batched<T, false, false>);
+    auto rocblas_ger_strided_batched_fn
+        = arg.fortran ? (CONJ ? rocblas_ger_strided_batched<T, true, true>
+                              : rocblas_ger_strided_batched<T, false, true>)
+                      : (CONJ ? rocblas_ger_strided_batched<T, true, false>
+                              : rocblas_ger_strided_batched<T, false, false>);
 
     rocblas_int M           = arg.M;
     rocblas_int N           = arg.N;

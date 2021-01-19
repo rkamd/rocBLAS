@@ -2,6 +2,8 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -19,8 +21,7 @@
 template <typename T>
 void testing_syr_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN        = arg.fortran;
-    auto       rocblas_syr_fn = FORTRAN ? rocblas_syr<T, true> : rocblas_syr<T, false>;
+    auto rocblas_syr_fn = arg.fortran ? rocblas_syr<T, true> : rocblas_syr<T, false>;
 
     rocblas_fill         uplo  = rocblas_fill_upper;
     rocblas_int          N     = 100;
@@ -52,8 +53,7 @@ void testing_syr_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_syr(const Arguments& arg)
 {
-    const bool FORTRAN        = arg.fortran;
-    auto       rocblas_syr_fn = FORTRAN ? rocblas_syr<T, true> : rocblas_syr<T, false>;
+    auto rocblas_syr_fn = arg.fortran ? rocblas_syr<T, true> : rocblas_syr<T, false>;
 
     rocblas_int          N       = arg.N;
     rocblas_int          incx    = arg.incx;
@@ -101,7 +101,15 @@ void testing_syr(const Arguments& arg)
     {
         rocblas_init_symmetric<T>(hA_1, N, lda);
     }
-    rocblas_init<T>(hx, 1, N, abs_incx);
+
+    if(arg.alpha_isnan<T>())
+    {
+        rocblas_init_nan<T>(hx, 1, N, abs_incx);
+    }
+    else
+    {
+        rocblas_init<T>(hx, 1, N, abs_incx);
+    }
 
     // copy matrix is easy in STL; hA_gold = hA_1: save a copy in hA_gold which will be output of
     // CPU BLAS

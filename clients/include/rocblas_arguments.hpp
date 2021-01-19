@@ -2,8 +2,7 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
-#ifndef ROCBLAS_ARGUMENTS_H_
-#define ROCBLAS_ARGUMENTS_H_
+#pragma once
 
 #include "../../library/src/include/rocblas_ostream.hpp"
 #include "rocblas.h"
@@ -63,6 +62,7 @@ struct Arguments
     char diag;
 
     rocblas_int batch_count;
+    bool        HMM;
     size_t      threads;
     size_t      streams;
     size_t      devices;
@@ -132,6 +132,7 @@ struct Arguments
     OPER(uplo) SEP                   \
     OPER(diag) SEP                   \
     OPER(batch_count) SEP            \
+    OPER(HMM) SEP            \
     OPER(threads) SEP                \
     OPER(streams) SEP                \
     OPER(devices) SEP                \
@@ -178,17 +179,25 @@ struct Arguments
     template <typename T>
     T get_alpha() const
     {
-        return rocblas_isnan(alpha) || (is_complex<T> && rocblas_isnan(alphai))
-                   ? T(0)
-                   : convert_alpha_beta<T>(alpha, alphai);
+        return alpha_isnan<T>() ? T(0) : convert_alpha_beta<T>(alpha, alphai);
     }
 
     template <typename T>
     T get_beta() const
     {
-        return rocblas_isnan(beta) || (is_complex<T> && rocblas_isnan(betai))
-                   ? T(0)
-                   : convert_alpha_beta<T>(beta, betai);
+        return beta_isnan<T>() ? T(0) : convert_alpha_beta<T>(beta, betai);
+    }
+
+    template <typename T>
+    bool alpha_isnan() const
+    {
+        return rocblas_isnan(alpha) || (is_complex<T> && rocblas_isnan(alphai));
+    }
+
+    template <typename T>
+    bool beta_isnan() const
+    {
+        return rocblas_isnan(beta) || (is_complex<T> && rocblas_isnan(betai));
     }
 
 private:
@@ -339,5 +348,3 @@ namespace ArgumentsHelper
 #endif
 
 #undef APPLY
-
-#endif

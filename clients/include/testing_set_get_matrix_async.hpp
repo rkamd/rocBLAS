@@ -1,7 +1,9 @@
 /* ************************************************************************
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
 #pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -127,7 +129,7 @@ void testing_set_get_matrix_async(const Arguments& arg)
             rocblas_cout,
             arg,
             gpu_time_used,
-            0,
+            ArgumentLogging::NA_value,
             set_get_matrix_gbyte_count<T>(rows, cols),
             cpu_time_used,
             rocblas_error);

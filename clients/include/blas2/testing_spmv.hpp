@@ -2,6 +2,8 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -18,8 +20,7 @@
 template <typename T>
 void testing_spmv_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN         = arg.fortran;
-    auto       rocblas_spmv_fn = FORTRAN ? rocblas_spmv<T, true> : rocblas_spmv<T, false>;
+    auto rocblas_spmv_fn = arg.fortran ? rocblas_spmv<T, true> : rocblas_spmv<T, false>;
 
     rocblas_fill         uplo  = rocblas_fill_upper;
     rocblas_int          N     = 100;
@@ -72,8 +73,7 @@ void testing_spmv_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_spmv(const Arguments& arg)
 {
-    const bool FORTRAN         = arg.fortran;
-    auto       rocblas_spmv_fn = FORTRAN ? rocblas_spmv<T, true> : rocblas_spmv<T, false>;
+    auto rocblas_spmv_fn = arg.fortran ? rocblas_spmv<T, true> : rocblas_spmv<T, false>;
 
     rocblas_int N    = arg.N;
     rocblas_int incx = arg.incx;
@@ -81,8 +81,8 @@ void testing_spmv(const Arguments& arg)
 
     host_vector<T> alpha(1);
     host_vector<T> beta(1);
-    alpha[0] = arg.alpha;
-    beta[0]  = arg.beta;
+    alpha[0] = arg.get_alpha<T>();
+    beta[0]  = arg.get_beta<T>();
 
     rocblas_fill uplo = char2rocblas_fill(arg.uplo);
 
@@ -128,9 +128,22 @@ void testing_spmv(const Arguments& arg)
 
     // Initial Data on CPU
     rocblas_seedrand();
-    rocblas_init<T>(hA);
-    rocblas_init<T>(hx, 1, N, abs_incx);
-    rocblas_init<T>(hy, 1, N, abs_incy);
+
+    if(arg.alpha_isnan<T>())
+    {
+        rocblas_init_nan<T>(hA, size_A, 1, 1);
+        rocblas_init_nan<T>(hx, 1, N, abs_incx);
+    }
+    else
+    {
+        rocblas_init<T>(hA);
+        rocblas_init<T>(hx, 1, N, abs_incx);
+    }
+
+    if(arg.beta_isnan<T>())
+        rocblas_init_nan<T>(hy, 1, N, abs_incy);
+    else
+        rocblas_init<T>(hy, 1, N, abs_incy);
 
     // make copy in hg which will later be used with CPU BLAS
     hg  = hy;

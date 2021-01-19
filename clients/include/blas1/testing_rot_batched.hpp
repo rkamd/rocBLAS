@@ -1,6 +1,8 @@
 /* ************************************************************************
- * Copyright 2018-2020 Advanced Micro Devices, Inc.
+ * Copyright 2018-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
+#pragma once
 
 #include "cblas_interface.hpp"
 #include "norm.hpp"
@@ -16,9 +18,8 @@
 template <typename T, typename U = T, typename V = T>
 void testing_rot_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_rot_batched_fn
-        = FORTRAN ? rocblas_rot_batched<T, U, V, true> : rocblas_rot_batched<T, U, V, false>;
+    auto rocblas_rot_batched_fn
+        = arg.fortran ? rocblas_rot_batched<T, U, V, true> : rocblas_rot_batched<T, U, V, false>;
 
     rocblas_int N           = 100;
     rocblas_int incx        = 1;
@@ -72,9 +73,8 @@ void testing_rot_batched_bad_arg(const Arguments& arg)
 template <typename T, typename U = T, typename V = T>
 void testing_rot_batched(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_rot_batched_fn
-        = FORTRAN ? rocblas_rot_batched<T, U, V, true> : rocblas_rot_batched<T, U, V, false>;
+    auto rocblas_rot_batched_fn
+        = arg.fortran ? rocblas_rot_batched<T, U, V, true> : rocblas_rot_batched<T, U, V, false>;
 
     rocblas_int N           = arg.N;
     rocblas_int incx        = arg.incx;
@@ -115,11 +115,22 @@ void testing_rot_batched(const Arguments& arg)
     host_vector<U>       hc(1);
     host_vector<V>       hs(1);
 
-    rocblas_init(hx, true);
-    rocblas_init(hy, false);
+    if(rocblas_isnan(arg.alpha))
+    {
+        rocblas_init_nan(hx, true);
+        rocblas_init_nan(hy, false);
 
-    rocblas_init(hc, false);
-    rocblas_init(hs, false);
+        rocblas_init_nan(hc, 1, 1, 1);
+        rocblas_init_nan(hs, 1, 1, 1);
+    }
+    else
+    {
+        rocblas_init(hx, true);
+        rocblas_init(hy, false);
+
+        rocblas_init(hc, false);
+        rocblas_init(hs, false);
+    }
 
     // CPU BLAS reference data
     host_batch_vector<T> cx(N, incx, batch_count);

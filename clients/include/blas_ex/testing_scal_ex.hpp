@@ -1,6 +1,8 @@
 /* ************************************************************************
- * Copyright 2018-2020 Advanced Micro Devices, Inc.
+ * Copyright 2018-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
+
+#pragma once
 
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
@@ -18,8 +20,7 @@
 template <typename Ta, typename Tx = Ta, typename Tex = Tx>
 void testing_scal_ex_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN            = arg.fortran;
-    auto       rocblas_scal_ex_fn = FORTRAN ? rocblas_scal_ex_fortran : rocblas_scal_ex;
+    auto rocblas_scal_ex_fn = arg.fortran ? rocblas_scal_ex_fortran : rocblas_scal_ex;
 
     rocblas_datatype alpha_type     = rocblas_datatype_f32_r;
     rocblas_datatype x_type         = rocblas_datatype_f32_r;
@@ -60,11 +61,10 @@ void testing_scal_ex_bad_arg(const Arguments& arg)
 template <typename Ta, typename Tx = Ta, typename Tex = Tx>
 void testing_scal_ex(const Arguments& arg)
 {
-    const bool FORTRAN            = arg.fortran;
-    auto       rocblas_scal_ex_fn = FORTRAN ? rocblas_scal_ex_fortran : rocblas_scal_ex;
+    auto rocblas_scal_ex_fn = arg.fortran ? rocblas_scal_ex_fortran : rocblas_scal_ex;
 
-    rocblas_datatype alpha_type     = arg.a_type;
-    rocblas_datatype x_type         = arg.b_type;
+    rocblas_datatype alpha_type     = arg.b_type;
+    rocblas_datatype x_type         = arg.a_type;
     rocblas_datatype execution_type = arg.compute_type;
 
     rocblas_int N       = arg.N;
@@ -91,7 +91,10 @@ void testing_scal_ex(const Arguments& arg)
 
     // Initial Data on CPU
     rocblas_seedrand();
-    rocblas_init<Tx>(hx_1, 1, N, incx);
+    if(rocblas_isnan(arg.alpha))
+        rocblas_init_nan<Tx>(hx_1, 1, N, incx);
+    else
+        rocblas_init<Tx>(hx_1, 1, N, incx);
 
     // copy vector is easy in STL; hy_gold = hx: save a copy in hy_gold which will be output of CPU
     // BLAS
@@ -136,7 +139,7 @@ void testing_scal_ex(const Arguments& arg)
 
         // CPU BLAS
         cpu_time_used = get_time_us_no_sync();
-        cblas_scal<Tx, Ta>(N, h_alpha, hy_gold, incx);
+        cblas_scal(N, h_alpha, (Tx*)hy_gold, incx);
         cpu_time_used = get_time_us_no_sync() - cpu_time_used;
 
         if(arg.unit_check)

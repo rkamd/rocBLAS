@@ -2,6 +2,8 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -19,8 +21,7 @@
 template <typename T>
 void testing_spr_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN        = arg.fortran;
-    auto       rocblas_spr_fn = FORTRAN ? rocblas_spr<T, true> : rocblas_spr<T, false>;
+    auto rocblas_spr_fn = arg.fortran ? rocblas_spr<T, true> : rocblas_spr<T, false>;
 
     rocblas_fill         uplo  = rocblas_fill_upper;
     rocblas_int          N     = 100;
@@ -54,8 +55,7 @@ void testing_spr_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_spr(const Arguments& arg)
 {
-    const bool FORTRAN        = arg.fortran;
-    auto       rocblas_spr_fn = FORTRAN ? rocblas_spr<T, true> : rocblas_spr<T, false>;
+    auto rocblas_spr_fn = arg.fortran ? rocblas_spr<T, true> : rocblas_spr<T, false>;
 
     rocblas_int          N       = arg.N;
     rocblas_int          incx    = arg.incx;
@@ -105,7 +105,15 @@ void testing_spr(const Arguments& arg)
 
     // Initial Data on CPU
     rocblas_init(hA_1, true);
-    rocblas_init(hx, false);
+
+    if(arg.alpha_isnan<T>())
+    {
+        rocblas_init_nan<T>(hx, 1, N, abs_incx);
+    }
+    else
+    {
+        rocblas_init<T>(hx, false);
+    }
 
     // copy matrix is easy in STL; hA_gold = hA_1: save a copy in hA_gold which will be output of
     // CPU BLAS

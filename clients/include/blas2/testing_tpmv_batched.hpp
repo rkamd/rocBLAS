@@ -2,6 +2,8 @@
  * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
+#pragma once
+
 #include "bytes.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
@@ -20,9 +22,8 @@
 template <typename T>
 void testing_tpmv_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_tpmv_batched_fn
-        = FORTRAN ? rocblas_tpmv_batched<T, true> : rocblas_tpmv_batched<T, false>;
+    auto rocblas_tpmv_batched_fn
+        = arg.fortran ? rocblas_tpmv_batched<T, true> : rocblas_tpmv_batched<T, false>;
 
     const rocblas_int       M           = 100;
     const rocblas_int       incx        = 1;
@@ -73,9 +74,8 @@ void testing_tpmv_batched_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_tpmv_batched(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_tpmv_batched_fn
-        = FORTRAN ? rocblas_tpmv_batched<T, true> : rocblas_tpmv_batched<T, false>;
+    auto rocblas_tpmv_batched_fn
+        = arg.fortran ? rocblas_tpmv_batched<T, true> : rocblas_tpmv_batched<T, false>;
 
     rocblas_int M = arg.M, incx = arg.incx, batch_count = arg.batch_count;
 

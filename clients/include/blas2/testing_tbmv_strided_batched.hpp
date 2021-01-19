@@ -3,6 +3,8 @@
  *
  * ************************************************************************ */
 
+#pragma once
+
 #include "cblas_interface.hpp"
 #include "flops.hpp"
 #include "near.hpp"
@@ -20,9 +22,8 @@
 template <typename T>
 void testing_tbmv_strided_batched_bad_arg(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_tbmv_strided_batched_fn
-        = FORTRAN ? rocblas_tbmv_strided_batched<T, true> : rocblas_tbmv_strided_batched<T, false>;
+    auto rocblas_tbmv_strided_batched_fn = arg.fortran ? rocblas_tbmv_strided_batched<T, true>
+                                                       : rocblas_tbmv_strided_batched<T, false>;
 
     const rocblas_int    M           = 100;
     const rocblas_int    K           = 5;
@@ -91,9 +92,8 @@ void testing_tbmv_strided_batched_bad_arg(const Arguments& arg)
 template <typename T>
 void testing_tbmv_strided_batched(const Arguments& arg)
 {
-    const bool FORTRAN = arg.fortran;
-    auto       rocblas_tbmv_strided_batched_fn
-        = FORTRAN ? rocblas_tbmv_strided_batched<T, true> : rocblas_tbmv_strided_batched<T, false>;
+    auto rocblas_tbmv_strided_batched_fn = arg.fortran ? rocblas_tbmv_strided_batched<T, true>
+                                                       : rocblas_tbmv_strided_batched<T, false>;
 
     rocblas_int       M           = arg.M;
     rocblas_int       K           = arg.K;
