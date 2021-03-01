@@ -1,11 +1,8 @@
 # ########################################################################
-# Copyright 2016-2020 Advanced Micro Devices, Inc.
+# Copyright 2016-2021 Advanced Micro Devices, Inc.
 # ########################################################################
 
 set( rocblas_samples_common ../common/utility.cpp )
-
-set( THREADS_PREFER_PTHREAD_FLAG ON )
-find_package( Threads REQUIRED )
 
 # C example
 add_executable( example-c-dgeam example_c_dgeam.c )
@@ -39,8 +36,12 @@ set( sample_list_hip_device ${sample_list_base} ${sample_list_tensile} )
 foreach( exe ${sample_list_all} )
   target_link_libraries( ${exe} PRIVATE rocblas_fortran_client roc::rocblas )
 
-  set_target_properties( ${exe} PROPERTIES CXX_EXTENSIONS NO )
-  set_target_properties( ${exe} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/staging" )
+  set_target_properties( ${exe} PROPERTIES
+    CXX_STANDARD 14
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/staging"
+  )
 
   if (NOT ${exe} STREQUAL "example-c-dgeam")
     target_compile_definitions( ${exe} PRIVATE ROCM_USE_FLOAT16 )
@@ -80,4 +81,3 @@ foreach( exe ${sample_list_hip_device} )
     target_link_libraries( ${exe} PRIVATE hip::device )
   endif()
 endforeach( )
-

@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2020 Advanced Micro Devices, Inc.
+ * Copyright 2016-2021 Advanced Micro Devices, Inc.
  *
  * ************************************************************************ */
 
@@ -107,9 +107,6 @@ rocblas_status rocblas_trtri_trsm_template(rocblas_handle   handle,
     // Quick return if possible.
     if(!n)
         return rocblas_status_success;
-
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     rocblas_status status;
 

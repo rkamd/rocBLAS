@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2020 Advanced Micro Devices, Inc.
+ * Copyright 2016-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -338,8 +338,6 @@ ROCBLAS_EXPORT_NOINLINE rocblas_status rocblas_dot_template(rocblas_handle __res
                                                             T* __restrict__ results,
                                                             V* __restrict__ workspace)
 {
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     // One or two kernels are used to finish the reduction
     // kernel 1 write partial results per thread block in workspace, number of partial results is blocks

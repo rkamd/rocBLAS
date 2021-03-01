@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2019-2020 Advanced Micro Devices, Inc.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -284,9 +284,6 @@ rocblas_status rocblas_tbmv_template(rocblas_handle    handle,
     // quick return
     if(!m || !batch_count)
         return rocblas_status_success;
-
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     // First we make a copy of x so we can avoid RAW race conditions in the kernel
     int  copy_blocks = (m - 1) / 256 + 1;

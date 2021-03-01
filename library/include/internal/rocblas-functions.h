@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2020 Advanced Micro Devices, Inc.
+ * Copyright 2016-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #ifndef _ROCBLAS_FUNCTIONS_H_
@@ -14641,15 +14641,32 @@ ROCBLAS_EXPORT rocblas_status rocblas_zgeam_strided_batched(rocblas_handle      
         - rocblas_datatype_f16_r = a_type = b_type = c_type = d_type = compute_type
         - rocblas_datatype_f16_r = a_type = b_type = c_type = d_type; rocblas_datatype_f32_r =
    compute_type
+        - rocblas_datatype_f16_r = a_type = b_type; rocblas_datatype_f32_r = c_type = d_type =
+   compute_type
         - rocblas_datatype_bf16_r = a_type = b_type = c_type = d_type; rocblas_datatype_f32_r =
+   compute_type
+        - rocblas_datatype_bf16_r = a_type = b_type; rocblas_datatype_f32_r = c_type = d_type =
    compute_type
         - rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r = c_type = d_type =
    compute_type
         - rocblas_datatype_f32_c  = a_type = b_type = c_type = d_type = compute_type
         - rocblas_datatype_f64_c  = a_type = b_type = c_type = d_type = compute_type
 
+    ROCm 4.2 supports two different versions of a = b = i8_r (in) and c = d = i32_r (out):
+        - Both versions are rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r =
+   c_type = d_type = compute_type, in addition to a last flag param indicating packing input or not.
+
+        - Without setting the last param 'flags' (default=none), this is supported for gfx908 or
+   later GPUs only. Input a/b won't be packed into int8x4. So the following size restrictions and
+   packing pseudo-code is not neccessary.
+
+        - Set the last param 'flags' |= rocblas_gemm_flags_pack_int8x4. Input a/b would be packed
+   into int8x4, and this will impose some size restrictions on A or B (See below.) For GPUs before
+   gfx908, only packed-int8 version is supported so this flag and packing is required, while
+   gfx908 GPUs support both versions.
+
     Below are restrictions for rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r =
-   c_type = d_type = compute_type:
+   c_type = d_type = compute_type; flags |= rocblas_gemm_flags_pack_int8x4:
         - k must be a multiple of 4
         - lda must be a multiple of 4 if transA == rocblas_operation_transpose
         - ldb must be a multiple of 4 if transB == rocblas_operation_none
@@ -14686,7 +14703,7 @@ ROCBLAS_EXPORT rocblas_status rocblas_zgeam_strided_batched(rocblas_handle      
         {
             for(int i_k = 0; i_k < k; i_k++)
             {
-                B_packed[i_k % nb + (i_n + (i_k / nb) * lda) * nb] = B[i_n + i_k * lda];
+                B_packed[i_k % nb + (i_n + (i_k / nb) * ldb) * nb] = B[i_n + i_k * ldb];
             }
         }
     }
@@ -14877,8 +14894,22 @@ ROCBLAS_EXPORT rocblas_status rocblas_gemm_ex(rocblas_handle    handle,
    compute_type
         - rocblas_datatype_f32_c  = a_type = b_type = c_type = d_type = compute_type
         - rocblas_datatype_f64_c  = a_type = b_type = c_type = d_type = compute_type
+
+    ROCm 4.2 supports two different versions of a = b = i8_r (in) and c = d = i32_r (out):
+        - Both versions are rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r =
+   c_type = d_type = compute_type, in addition to a last flag param indicating packing input or not.
+
+        - Without setting the last param 'flags' (default=none), this is supported for gfx908 or
+   later GPUs only. Input a/b won't be packed into int8x4. So the following size restrictions and
+   packing pseudo-code is not neccessary.
+
+        - Set the last param 'flags' |= rocblas_gemm_flags_pack_int8x4. Input a/b would be packed
+   into int8x4, and this will impose some size restrictions on A or B (See below.) For GPUs before
+   gfx908, only packed-int8 version is supported so this flag and packing is required, while
+   gfx908 GPUs support both versions.
+
     Below are restrictions for rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r =
-   c_type = d_type = compute_type:
+   c_type = d_type = compute_type; flags |= rocblas_gemm_flags_pack_int8x4:
         - k must be a multiple of 4
         - lda must be a multiple of 4 if transA == rocblas_operation_transpose
         - ldb must be a multiple of 4 if transB == rocblas_operation_none
@@ -14914,7 +14945,7 @@ ROCBLAS_EXPORT rocblas_status rocblas_gemm_ex(rocblas_handle    handle,
         {
             for(int i_k = 0; i_k < k; i_k++)
             {
-                B_packed[i_k % nb + (i_n + (i_k / nb) * lda) * nb] = B[i_n + i_k * lda];
+                B_packed[i_k % nb + (i_n + (i_k / nb) * ldb) * nb] = B[i_n + i_k * ldb];
             }
         }
     }
@@ -15063,8 +15094,21 @@ ROCBLAS_EXPORT rocblas_status rocblas_gemm_batched_ex(rocblas_handle    handle,
         - rocblas_datatype_f32_c  = a_type = b_type = c_type = d_type = compute_type
         - rocblas_datatype_f64_c  = a_type = b_type = c_type = d_type = compute_type
 
+    ROCm 4.2 supports two different versions of a = b = i8_r (in) and c = d = i32_r (out):
+        - Both versions are rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r =
+   c_type = d_type = compute_type, in addition to a last flag param indicating packing input or not.
+
+        - Without setting the last param 'flags' (default=none), this is supported for gfx908 or
+   later GPUs only. Input a/b won't be packed into int8x4. So the following size restrictions and
+   packing pseudo-code is not neccessary.
+
+        - Set the last param 'flags' |= rocblas_gemm_flags_pack_int8x4. Input a/b would be packed
+   into int8x4, and this will impose some size restrictions on A or B (See below.) For GPUs before
+   gfx908, only packed-int8 version is supported so this flag and packing is required, while
+   gfx908 GPUs support both versions.
+
     Below are restrictions for rocblas_datatype_i8_r = a_type = b_type; rocblas_datatype_i32_r =
-   c_type = d_type = compute_type:
+   c_type = d_type = compute_type; flags |= rocblas_gemm_flags_pack_int8x4:
         - k must be a multiple of 4
         - lda must be a multiple of 4 if transA == rocblas_operation_transpose
         - ldb must be a multiple of 4 if transB == rocblas_operation_none
@@ -15101,7 +15145,7 @@ ROCBLAS_EXPORT rocblas_status rocblas_gemm_batched_ex(rocblas_handle    handle,
         {
             for(int i_k = 0; i_k < k; i_k++)
             {
-                B_packed[i_k % nb + (i_n + (i_k / nb) * lda) * nb] = B[i_n + i_k * lda];
+                B_packed[i_k % nb + (i_n + (i_k / nb) * ldb) * nb] = B[i_n + i_k * ldb];
             }
         }
     }
@@ -15905,16 +15949,17 @@ ROCBLAS_EXPORT rocblas_status rocblas_trsm_strided_batched_ex(rocblas_handle    
 
         Currently supported datatypes are as follows:
 
-        ---------------------------------------------
+        -------------------------------------------------
         | alpha_type | x_type | y_type | execution_type |
-        |-----------|-------|-------|---------------|
-        |  f16_r    | f16_r | f16_r |     f16_r     |
-        |  f16_r    | f16_r | f16_r |     f32_r     |
-        |  f32_r    | f32_r | f32_r |     f32_r     |
-        |  f64_r    | f64_r | f64_r |     f64_r     |
-        |  f32_c    | f32_c | f32_c |     f32_c     |
-        |  f64_c    | f64_c | f64_c |     f64_c     |
-        ---------------------------------------------
+        |------------|--------|--------|----------------|
+        |  f16_r     | f16_r  |  f16_r |      f16_r     |
+        |  f16_r     | f16_r  |  f16_r |      f32_r     |
+        |  f32_r     | f16_r  |  f16_r |      f32_r     |
+        |  f32_r     | f32_r  |  f32_r |      f32_r     |
+        |  f64_r     | f64_r  |  f64_r |      f64_r     |
+        |  f32_c     | f32_c  |  f32_c |      f32_c     |
+        |  f64_c     | f64_c  |  f64_c |      f64_c     |
+        -------------------------------------------------
 
     @param[in]
     handle    [rocblas_handle]
@@ -15970,16 +16015,17 @@ ROCBLAS_EXPORT rocblas_status rocblas_axpy_ex(rocblas_handle   handle,
 
         Currently supported datatypes are as follows:
 
-        ---------------------------------------------
+        -------------------------------------------------
         | alpha_type | x_type | y_type | execution_type |
-        |-----------|-------|-------|---------------|
-        |  f16_r    | f16_r | f16_r |     f16_r     |
-        |  f16_r    | f16_r | f16_r |     f32_r     |
-        |  f32_r    | f32_r | f32_r |     f32_r     |
-        |  f64_r    | f64_r | f64_r |     f64_r     |
-        |  f32_c    | f32_c | f32_c |     f32_c     |
-        |  f64_c    | f64_c | f64_c |     f64_c     |
-        ---------------------------------------------
+        |------------|--------|--------|----------------|
+        |  f16_r     | f16_r  |  f16_r |      f16_r     |
+        |  f16_r     | f16_r  |  f16_r |      f32_r     |
+        |  f32_r     | f16_r  |  f16_r |      f32_r     |
+        |  f32_r     | f32_r  |  f32_r |      f32_r     |
+        |  f64_r     | f64_r  |  f64_r |      f64_r     |
+        |  f32_c     | f32_c  |  f32_c |      f32_c     |
+        |  f64_c     | f64_c  |  f64_c |      f64_c     |
+        -------------------------------------------------
 
     @param[in]
     handle    [rocblas_handle]
@@ -16039,16 +16085,17 @@ ROCBLAS_EXPORT rocblas_status rocblas_axpy_batched_ex(rocblas_handle   handle,
 
         Currently supported datatypes are as follows:
 
-        ---------------------------------------------
+        -------------------------------------------------
         | alpha_type | x_type | y_type | execution_type |
-        |-----------|-------|-------|---------------|
-        |  f16_r    | f16_r | f16_r |     f16_r     |
-        |  f16_r    | f16_r | f16_r |     f32_r     |
-        |  f32_r    | f32_r | f32_r |     f32_r     |
-        |  f64_r    | f64_r | f64_r |     f64_r     |
-        |  f32_c    | f32_c | f32_c |     f32_c     |
-        |  f64_c    | f64_c | f64_c |     f64_c     |
-        ---------------------------------------------
+        |------------|--------|--------|----------------|
+        |  f16_r     | f16_r  |  f16_r |      f16_r     |
+        |  f16_r     | f16_r  |  f16_r |      f32_r     |
+        |  f32_r     | f16_r  |  f16_r |      f32_r     |
+        |  f32_r     | f32_r  |  f32_r |      f32_r     |
+        |  f64_r     | f64_r  |  f64_r |      f64_r     |
+        |  f32_c     | f32_c  |  f32_c |      f32_c     |
+        |  f64_c     | f64_c  |  f64_c |      f64_c     |
+        -------------------------------------------------
 
     @param[in]
     handle    [rocblas_handle]
@@ -16824,6 +16871,7 @@ ROCBLAS_EXPORT rocblas_status rocblas_rot_strided_batched_ex(rocblas_handle   ha
         |------------|--------|----------------|
         |  f16_r     | f16_r  |     f16_r      |
         |  f16_r     | f16_r  |     f32_r      |
+        |  f32_r     | f16_r  |     f32_r      |
         |  f32_r     | f32_r  |     f32_r      |
         |  f64_r     | f64_r  |     f64_r      |
         |  f32_c     | f32_c  |     f32_c      |
@@ -16879,6 +16927,7 @@ ROCBLAS_EXPORT rocblas_status rocblas_scal_ex(rocblas_handle   handle,
         |------------|--------|----------------|
         |  f16_r     | f16_r  |     f16_r      |
         |  f16_r     | f16_r  |     f32_r      |
+        |  f32_r     | f16_r  |     f32_r      |
         |  f32_r     | f32_r  |     f32_r      |
         |  f64_r     | f64_r  |     f64_r      |
         |  f32_c     | f32_c  |     f32_c      |
@@ -16939,6 +16988,7 @@ ROCBLAS_EXPORT rocblas_status rocblas_scal_batched_ex(rocblas_handle   handle,
         |------------|--------|----------------|
         |  f16_r     | f16_r  |     f16_r      |
         |  f16_r     | f16_r  |     f32_r      |
+        |  f32_r     | f16_r  |     f32_r      |
         |  f32_r     | f32_r  |     f32_r      |
         |  f64_r     | f64_r  |     f64_r      |
         |  f32_c     | f32_c  |     f32_c      |

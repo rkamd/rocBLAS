@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2019-2020 Advanced Micro Devices, Inc.
+ * Copyright 2019-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -126,8 +126,8 @@ __launch_bounds__(DIM_X* DIM_Y) __global__ void hpmv_kernel(bool           upper
     if(!alpha && beta == 1)
         return;
 
-    auto AP = alpha ? load_ptr_batch(APa, hipBlockIdx_y, shifta, strideA) : nullptr;
-    auto x  = alpha ? load_ptr_batch(xa, hipBlockIdx_y, shiftx, stridex) : nullptr;
+    auto AP = cond_load_ptr_batch(alpha, APa, hipBlockIdx_y, shifta, strideA);
+    auto x  = cond_load_ptr_batch(alpha, xa, hipBlockIdx_y, shiftx, stridex);
 
     auto y = load_ptr_batch(ya, hipBlockIdx_y, shifty, stridey);
 
@@ -171,9 +171,6 @@ rocblas_status rocblas_hpmv_template(rocblas_handle handle,
     rocblas_int          blocks     = (n - 1) / (HPMV_DIM_X) + 1;
     dim3                 hpmv_grid(blocks, batch_count);
     dim3                 hpmv_threads(HPMV_DIM_X, HPMV_DIM_Y);
-
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     // Launch a modified gemv kernel for hpmv.
     if(handle->pointer_mode == rocblas_pointer_mode_device)

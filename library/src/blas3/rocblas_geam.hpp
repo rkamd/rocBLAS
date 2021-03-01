@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2020 Advanced Micro Devices, Inc.
+ * Copyright 2016-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -54,8 +54,8 @@ __global__ __launch_bounds__(DIM_X* DIM_Y) void geam_device(rocblas_operation tr
         auto alpha = load_scalar(alpha_device_host, hipBlockIdx_z, 0);
         auto beta  = load_scalar(beta_device_host, hipBlockIdx_z, 0);
 
-        auto* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_z, offset_a, stride_a) : nullptr;
-        auto* B = beta ? load_ptr_batch(Ba, hipBlockIdx_z, offset_b, stride_b) : nullptr;
+        auto* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_z, offset_a, stride_a);
+        auto* B = cond_load_ptr_batch(beta, Ba, hipBlockIdx_z, offset_b, stride_b);
         auto* C = load_ptr_batch(Ca, hipBlockIdx_z, offset_c, stride_c);
 
         int a_index;
@@ -176,8 +176,8 @@ __global__ __launch_bounds__(DIM_X) void geam_1D_device(rocblas_int    size,
         }
         else
         {
-            auto* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_y, offset_a, stride_a) : nullptr;
-            auto* B = beta ? load_ptr_batch(Ba, hipBlockIdx_y, offset_b, stride_b) : nullptr;
+            auto* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_y, offset_a, stride_a);
+            auto* B = cond_load_ptr_batch(beta, Ba, hipBlockIdx_y, offset_b, stride_b);
 
             C[tx] = (beta ? beta * B[tx] : 0) + (alpha ? alpha * A[tx] : 0);
         }
@@ -319,9 +319,6 @@ rocblas_status rocblas_geam_template(rocblas_handle    handle,
 
 {
     hipStream_t rocblas_stream = handle->get_stream();
-
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     auto pointer_mode = handle->pointer_mode;
     if(pointer_mode == rocblas_pointer_mode_host && !*alpha && !*beta)

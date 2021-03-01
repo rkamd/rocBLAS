@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2020 Advanced Micro Devices, Inc.
+ * Copyright 2016-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -77,9 +77,6 @@ rocblas_status rocblas_dgmm_template(rocblas_handle handle,
 
 {
     hipStream_t rocblas_stream = handle->get_stream();
-
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     auto pointer_mode = handle->pointer_mode;
 

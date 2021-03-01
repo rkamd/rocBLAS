@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2020 Advanced Micro Devices, Inc.
+ * Copyright 2020-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -237,9 +237,6 @@ ROCBLAS_EXPORT_NOINLINE rocblas_status rocblas_syrk_template(rocblas_handle    h
     rocblas_int          by          = (n - 1) / (SYRK_DIM_XY) + 1;
     dim3                 syrk_grid(bx, by, batch_count);
     dim3                 syrk_threads(SYRK_DIM_XY, SYRK_DIM_XY);
-
-    // Temporarily change the thread's default device ID to the handle's device ID
-    auto saved_device_id = handle->push_device_id();
 
     // Launch a herk kernel for syrk.
     if(handle->pointer_mode == rocblas_pointer_mode_device)

@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2020 Advanced Micro Devices, Inc.
+ * Copyright 2016-2021 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 #include "handle.hpp"
 #include "logging.hpp"
@@ -282,7 +282,8 @@ try
                                                ldd,
                                                stride_d,
                                                batch_count,
-                                               compute_type);
+                                               compute_type,
+                                               flags);
     };
 
     if(HPA && !handle->is_device_memory_size_query())
