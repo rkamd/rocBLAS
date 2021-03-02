@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2020-2021 Advanced Micro Devices, Inc.
+ * Copyright 2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #include "rocblas_gemm_ext2.hpp"
@@ -402,8 +402,7 @@ namespace
                                                   col_stride_d,
                                                   batch_stride,
                                                   batch_count,
-                                                  compute_type,
-                                                  flags);
+                                                  compute_type);
             };
 
             if(HPA && !handle->is_device_memory_size_query())

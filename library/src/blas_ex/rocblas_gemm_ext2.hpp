@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2020-2021 Advanced Micro Devices, Inc.
+ * Copyright 2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -20,61 +20,56 @@ rocblas_status gemm_ext2_batched_template(rocblas_handle handle,
                                           rocblas_int    k,
                                           const Tc*      alpha,
                                           const Ti*      a,
-                                          rocblas_int    offset_a,
+                                          size_t         offset_a,
                                           rocblas_int    row_stride_a,
                                           rocblas_int    col_stride_a,
                                           rocblas_stride batch_stride_a,
                                           const Ti*      b,
-                                          rocblas_int    offset_b,
+                                          size_t         offset_b,
                                           rocblas_int    row_stride_b,
                                           rocblas_int    col_stride_b,
                                           rocblas_stride batch_stride_b,
                                           const Tc*      beta,
                                           const To*      c,
-                                          rocblas_int    offset_c,
+                                          size_t         offset_c,
                                           rocblas_int    row_stride_c,
                                           rocblas_int    col_stride_c,
                                           rocblas_stride batch_stride_c,
                                           To*            d,
-                                          rocblas_int    offset_d,
+                                          size_t         offset_d,
                                           rocblas_int    row_stride_d,
                                           rocblas_int    col_stride_d,
                                           rocblas_stride batch_stride_d,
-                                          rocblas_int    batch_count   = 1,
-                                          bool           strided_batch = true)
+                                          rocblas_int    batch_count = 1)
 {
+    a += offset_a;
+    b += offset_b;
+    c += offset_c;
+    d += offset_d;
+
     RocblasContractionProblem<Ti, To, Tc> problem{handle,
                                                   m,
                                                   n,
                                                   k,
                                                   alpha,
                                                   a,
-                                                  nullptr,
                                                   row_stride_a,
                                                   col_stride_a,
                                                   batch_stride_a,
-                                                  offset_a,
                                                   b,
-                                                  nullptr,
                                                   row_stride_b,
                                                   col_stride_b,
                                                   batch_stride_b,
-                                                  offset_b,
                                                   beta,
                                                   c,
-                                                  nullptr,
                                                   row_stride_c,
                                                   col_stride_c,
                                                   batch_stride_c,
-                                                  offset_c,
                                                   d,
-                                                  nullptr,
                                                   row_stride_d,
                                                   col_stride_d,
                                                   batch_stride_d,
-                                                  offset_d,
-                                                  batch_count,
-                                                  strided_batch};
+                                                  batch_count};
 
     return runContractionProblem(problem);
 }
@@ -177,8 +172,7 @@ inline rocblas_status rocblas_gemm_ext2_template(rocblas_handle   handle,
                                                  rocblas_int      col_stride_d,
                                                  rocblas_stride   batch_stride_d,
                                                  rocblas_int      batch_count,
-                                                 rocblas_datatype compute_type,
-                                                 uint32_t         flags)
+                                                 rocblas_datatype compute_type)
 {
     // Note: k==0 is not an early exit, since C still needs to be multiplied by beta
     if(!m || !n || !batch_count)
@@ -241,39 +235,20 @@ inline rocblas_status rocblas_gemm_ext2_template(rocblas_handle   handle,
             && c_type == rocblas_datatype_i32_r && d_type == rocblas_datatype_i32_r
             && compute_type == rocblas_datatype_i32_r)
     {
-        bool useInt8x4 = flags & rocblas_gemm_flags_pack_int8x4;
-        // Here is point where we decide to branch to real int8 or rocblas_int8x4
-        // MatrixInstruction kernel uses general int8 (unless rocblas_gemm_flags_pack_int8x4 is set)
-        if(!useInt8x4)
+        // For now, K must be a multiple of 4
+        if(k % 4 || col_stride_b % 4 || batch_stride_a % 4 || batch_stride_b % 4)
         {
-            // M, N should be at least 4
-            if(m < 4 || n < 4)
-            {
-                rb_status = rocblas_status_invalid_size;
-            }
-            else
-            {
-                rb_status = gemm_ext2_typecasting<int8_t, int32_t>(EX_TYPECASTING_PARM);
-            }
+            rb_status = rocblas_status_invalid_size;
         }
-        // Else, we check if we can pack 4 int8:
         else
         {
-            // For now, K must be a multiple of 4
-            if(k % 4 || col_stride_b % 4 || batch_stride_a % 4 || batch_stride_b % 4)
-            {
-                rb_status = rocblas_status_invalid_size;
-            }
-            else
-            {
-                // adjust by 4 for Tensile
-                col_stride_b /= 4;
-                k /= 4;
-                batch_stride_a /= 4;
-                batch_stride_b /= 4;
+            // adjust by 4 for Tensile
+            col_stride_b /= 4;
+            k /= 4;
+            batch_stride_a /= 4;
+            batch_stride_b /= 4;
 
-                rb_status = gemm_ext2_typecasting<rocblas_int8x4, int32_t>(EX_TYPECASTING_PARM);
-            }
+            rb_status = gemm_ext2_typecasting<int8_t, int32_t>(EX_TYPECASTING_PARM);
         }
     }
     else if(a_type == rocblas_datatype_f32_c && b_type == rocblas_datatype_f32_c

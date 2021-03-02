@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2020-2021 Advanced Micro Devices, Inc.
+ * Copyright 2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -107,6 +107,9 @@ ROCBLAS_EXPORT_NOINLINE rocblas_status rocblas_herk_template(rocblas_handle    h
     dim3                  syrk_grid(bx, by, batch_count);
     dim3                  syrk_threads(SYRK_DIM_XY, SYRK_DIM_XY);
     static constexpr bool Hermitian = true;
+
+    // Temporarily change the thread's default device ID to the handle's device ID
+    auto saved_device_id = handle->push_device_id();
 
     if(handle->pointer_mode == rocblas_pointer_mode_device)
     {

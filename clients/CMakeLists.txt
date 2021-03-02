@@ -1,8 +1,9 @@
 # ########################################################################
-# Copyright 2016-2021 Advanced Micro Devices, Inc.
+# Copyright 2016-2020 Advanced Micro Devices, Inc.
 # ########################################################################
 
-cmake_minimum_required( VERSION 3.16.8 )
+# The ROCm platform requires Ubuntu 16.04 or Fedora 24, which has cmake 3.5
+cmake_minimum_required( VERSION 3.8 )
 
 add_definitions(-D_ROCBLAS_INTERNAL_BFLOAT16_)
 
@@ -34,34 +35,18 @@ if( BUILD_WITH_TENSILE )
 endif()
 
 add_library(rocblas_fortran_client ${rocblas_f90_source_clients} $<TARGET_OBJECTS:rocblas_fortran>)
+include_directories(${CMAKE_BINARY_DIR}/include)
+include_directories(${CMAKE_BINARY_DIR}/include/internal)
 
-if( SKIP_LIBRARY )
-  include_directories(${ROCBLAS_LIBRARY_DIR}/include)
-  include_directories(${ROCBLAS_LIBRARY_DIR}/include/internal)
+if(OS_ID_rhel OR OS_ID_centos OR OS_ID_sles)
+    set(COMMON_CXX_OPTIONS "-fopenmp=libgomp;-pthread;-stdlib=libstdc++;-std=c++14")
 else()
-  include_directories(${CMAKE_BINARY_DIR}/include)
-  include_directories(${CMAKE_BINARY_DIR}/include/internal)
+    set(COMMON_CXX_OPTIONS "-fopenmp;-pthread")
 endif()
-
+set(COMMON_LINK_LIBS "-fopenmp -lpthread -lstdc++")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-
-# if it fails to find OpenMP compile and link flags in strange configurations it can just use non-parallel reference computation
-# if there is no omp.h to find the client compilation will fail and this should be obvious, used to be REQUIRED
-find_package(OpenMP)
-
-if (TARGET OpenMP::OpenMP_CXX)
-  set( COMMON_LINK_LIBS "OpenMP::OpenMP_CXX")
-  list( APPEND COMMON_LINK_LIBS "-L${HIP_CLANG_ROOT}/lib;-Wl,-rpath=${HIP_CLANG_ROOT}/lib")
-endif()
-
-if (TARGET Threads::Threads)
-  list( APPEND COMMON_LINK_LIBS "Threads::Threads")
-endif()
-
-message(STATUS "CLIENT COMMON CXX_OPTIONS: ${COMMON_CXX_OPTIONS}")
-message(STATUS "CLIENT COMMON LINK: ${COMMON_LINK_LIBS}")
 
 list( APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake )
 
@@ -72,7 +57,7 @@ include( build-options )
 set( CMAKE_EXPORT_COMPILE_COMMANDS ON )
 
 if( NOT TARGET rocblas )
-  find_package( rocblas REQUIRED CONFIG PATHS ${ROCM_PATH}/rocblas /opt/rocm/rocblas ${ROCBLAS_LIBRARY_DIR})
+  find_package( rocblas REQUIRED CONFIG PATHS ${ROCM_PATH}/rocblas /opt/rocm/rocblas )
 endif( )
 
 # Hip headers required of all clients; clients use hip to allocate device memory

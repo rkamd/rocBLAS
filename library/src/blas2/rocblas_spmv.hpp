@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2019-2021 Advanced Micro Devices, Inc.
+ * Copyright 2019-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -118,8 +118,8 @@ __global__ __launch_bounds__(DIM_X* DIM_Y) void spmv_kernel(bool           upper
     if(!alpha && beta == 1)
         return;
 
-    auto AP = cond_load_ptr_batch(alpha, APa, hipBlockIdx_y, shifta, strideA);
-    auto x  = cond_load_ptr_batch(alpha, xa, hipBlockIdx_y, shiftx, stridex);
+    auto AP = alpha ? load_ptr_batch(APa, hipBlockIdx_y, shifta, strideA) : nullptr;
+    auto x  = alpha ? load_ptr_batch(xa, hipBlockIdx_y, shiftx, stridex) : nullptr;
 
     auto y = load_ptr_batch(ya, hipBlockIdx_y, shifty, stridey);
 
@@ -205,6 +205,9 @@ rocblas_status rocblas_spmv_template(rocblas_handle handle,
     rocblas_int          blocks     = (n - 1) / (spmv_DIM_X) + 1;
     dim3                 grid(blocks, batch_count);
     dim3                 threads(spmv_DIM_X, spmv_DIM_Y);
+
+    // Temporarily change the thread's default device ID to the handle's device ID
+    auto saved_device_id = handle->push_device_id();
 
     bool upper = uplo == rocblas_fill_upper;
     if(handle->pointer_mode == rocblas_pointer_mode_device)

@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2021 Advanced Micro Devices, Inc.
+ * Copyright 2016-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -9,7 +9,6 @@
 
 template <rocblas_int DIM_X,
           rocblas_int DIM_Y,
-          typename T_lda,
           typename T,
           typename U,
           std::enable_if_t<!std::is_same<T, rocblas_double_complex>{}, int> = 0>
@@ -17,7 +16,7 @@ __device__ void gemvn_kernel_calc(rocblas_int m,
                                   rocblas_int n,
                                   U           alpha,
                                   const T*    A,
-                                  T_lda       lda,
+                                  rocblas_int lda,
                                   const T*    x,
                                   rocblas_int incx,
                                   U           beta,
@@ -173,12 +172,12 @@ __device__ void gemvn_kernel_calc(rocblas_int m,
 
 // Overload for double precision complex numbers. We run out of registers
 // if we use the above algorithm.
-template <rocblas_int DIM_X, rocblas_int DIM_Y, typename T_lda, typename U>
+template <rocblas_int DIM_X, rocblas_int DIM_Y, typename U>
 __device__ void gemvn_kernel_calc(rocblas_int                   m,
                                   rocblas_int                   n,
                                   U                             alpha,
                                   const rocblas_double_complex* A,
-                                  T_lda                         lda,
+                                  rocblas_int                   lda,
                                   const rocblas_double_complex* x,
                                   rocblas_int                   incx,
                                   U                             beta,
@@ -325,12 +324,12 @@ __device__ void gemvt_kernel_calc(rocblas_int m,
     }
 }
 
-template <bool CONJ, rocblas_int NB_X, rocblas_int WIN, typename T_lda, typename T, typename U>
+template <bool CONJ, rocblas_int NB_X, rocblas_int WIN, typename T, typename U>
 __device__ void gemvt_sn_kernel_calc(rocblas_int m,
                                      rocblas_int n,
                                      U           alpha,
                                      const T*    A,
-                                     T_lda       lda,
+                                     rocblas_int lda,
                                      const T*    x,
                                      rocblas_int incx,
                                      T*          work)
@@ -522,7 +521,7 @@ __device__ void gemvtsm_kernel_calc(rocblas_int m,
         {
             rocblas_int idx  = col * incy;
             T           res  = beta ? beta * y[idx] : 0;
-            const T*    Aptr = A + col * size_t(lda);
+            const T*    Aptr = A + col * lda;
             for(rocblas_int l = 0; l < m; ++l)
                 res += shared_x[l] * (CONJ ? conj(Aptr[l]) : Aptr[l]);
             y[idx] = res;
@@ -530,13 +529,7 @@ __device__ void gemvtsm_kernel_calc(rocblas_int m,
     }
 }
 
-template <rocblas_int DIM_X,
-          rocblas_int DIM_Y,
-          typename T_lda,
-          typename T,
-          typename U,
-          typename V,
-          typename W>
+template <rocblas_int DIM_X, rocblas_int DIM_Y, typename T, typename U, typename V, typename W>
 __global__ __launch_bounds__(DIM_X* DIM_Y) void gemvn_kernel(rocblas_int    m,
                                                              rocblas_int    n,
                                                              U              alpha_device_host,
@@ -566,15 +559,14 @@ __global__ __launch_bounds__(DIM_X* DIM_Y) void gemvn_kernel(rocblas_int    m,
     if(!alpha && beta == 1)
         return;
 
-    const T* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_y, shifta, strideA);
-    const T* x = cond_load_ptr_batch(alpha, xa, hipBlockIdx_y, shiftx, stridex);
+    const T* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_y, shifta, strideA) : nullptr;
+    const T* x = alpha ? load_ptr_batch(xa, hipBlockIdx_y, shiftx, stridex) : nullptr;
 
     T* y = load_ptr_batch(ya, hipBlockIdx_y, shifty, stridey);
 
-    gemvn_kernel_calc<DIM_X, DIM_Y, T_lda>(m, n, alpha, A, lda, x, incx, beta, y, incy);
+    gemvn_kernel_calc<DIM_X, DIM_Y>(m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-// lda always cast to size_t so single kernel
 template <bool CONJ, rocblas_int NB_X, typename T, typename U, typename V, typename W>
 __global__ __launch_bounds__(NB_X) void gemvt_kernel(rocblas_int    m,
                                                      rocblas_int    n,
@@ -601,28 +593,22 @@ __global__ __launch_bounds__(NB_X) void gemvt_kernel(rocblas_int    m,
     if(!alpha && beta == 1)
         return;
 
-    const T* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_y, shifta, strideA);
-    const T* x = cond_load_ptr_batch(alpha, xa, hipBlockIdx_y, shiftx, stridex);
+    const T* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_y, shifta, strideA) : nullptr;
+    const T* x = alpha ? load_ptr_batch(xa, hipBlockIdx_y, shiftx, stridex) : nullptr;
 
     T* y = load_ptr_batch(ya, hipBlockIdx_y, shifty, stridey);
 
     gemvt_kernel_calc<CONJ, NB_X>(m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-template <bool        CONJ,
-          rocblas_int NB_X,
-          rocblas_int WIN,
-          typename T_lda,
-          typename T,
-          typename U,
-          typename V>
+template <bool CONJ, rocblas_int NB_X, rocblas_int WIN, typename T, typename U, typename V>
 __global__ __launch_bounds__(NB_X) void gemvt_sn_kernel(rocblas_int    m,
                                                         rocblas_int    n,
                                                         U              alpha_device_host,
                                                         rocblas_stride stride_alpha,
                                                         const V*       Aa,
                                                         ptrdiff_t      shifta,
-                                                        T_lda          lda,
+                                                        rocblas_int    lda,
                                                         rocblas_stride strideA,
                                                         const V*       xa,
                                                         ptrdiff_t      shiftx,
@@ -632,10 +618,10 @@ __global__ __launch_bounds__(NB_X) void gemvt_sn_kernel(rocblas_int    m,
 {
     auto alpha = load_scalar(alpha_device_host, hipBlockIdx_y, stride_alpha);
 
-    const T* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_y, shifta, strideA);
-    const T* x = cond_load_ptr_batch(alpha, xa, hipBlockIdx_y, shiftx, stridex);
+    const T* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_y, shifta, strideA) : nullptr;
+    const T* x = alpha ? load_ptr_batch(xa, hipBlockIdx_y, shiftx, stridex) : nullptr;
 
-    gemvt_sn_kernel_calc<CONJ, NB_X, WIN, T_lda>(m, n, alpha, A, lda, x, incx, work);
+    gemvt_sn_kernel_calc<CONJ, NB_X, WIN>(m, n, alpha, A, lda, x, incx, work);
 }
 
 template <bool CONJ, rocblas_int NB_X, typename T, typename U, typename V, typename W>
@@ -665,8 +651,8 @@ __global__ __launch_bounds__(NB_X) void gemvtsm_kernel(rocblas_int    m,
         return;
 
     // batch in hipBlockIdx_x not y
-    const T* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_x, shifta, strideA);
-    const T* x = cond_load_ptr_batch(alpha, xa, hipBlockIdx_x, shiftx, stridex);
+    const T* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_x, shifta, strideA) : nullptr;
+    const T* x = alpha ? load_ptr_batch(xa, hipBlockIdx_x, shiftx, stridex) : nullptr;
 
     T* y = load_ptr_batch(ya, hipBlockIdx_x, shifty, stridey);
 

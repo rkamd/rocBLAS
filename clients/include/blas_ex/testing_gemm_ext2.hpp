@@ -1,12 +1,12 @@
 /* ************************************************************************
- * Copyright 2018-2021 Advanced Micro Devices, Inc.
+ * Copyright 2018-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
 
-#include "../../library/src/include/handle.hpp"
 #include "cblas_interface.hpp"
 #include "flops.hpp"
+#include "handle.hpp"
 #include "near.hpp"
 #include "norm.hpp"
 #include "rocblas.hpp"
@@ -347,9 +347,6 @@ void testing_gemm_ext2(const Arguments& arg)
     // the same as a normal GEMM
     row_stride_c = 0;
 
-    // check if we are going to use int8x4 or int8 from arg flags
-    bool pack_to_int8x4 = arg.flags & rocblas_gemm_flags_pack_int8x4;
-
     // check for invalid sizes
     bool invalid_size = M < 0 || N < 0 || K < 0;
 
@@ -509,9 +506,8 @@ void testing_gemm_ext2(const Arguments& arg)
     hD_2 = hD_1;
 
     // copy data from CPU to device
-    // do packing only when pack_to_int8x4=true (int8x4)
-    // if int8x4 and A not transposed and valid case, pack A
-    if(std::is_same<Ti, int8_t>{} && transA == rocblas_operation_none && pack_to_int8x4)
+    // if int8 and A not transposed and valid case, pack A
+    if(std::is_same<Ti, int8_t>{} && transA == rocblas_operation_none)
     {
         host_vector<Ti> hA_packed(hA);
 
@@ -523,9 +519,8 @@ void testing_gemm_ext2(const Arguments& arg)
         CHECK_HIP_ERROR(hipMemcpy(dA, hA, sizeof(Ti) * size_A, hipMemcpyHostToDevice));
     }
 
-    // do packing only when pack_to_int8x4=true (int8x4)
-    // if int8x4 and B transposed and valid case, pack B
-    if(std::is_same<Ti, int8_t>{} && transB != rocblas_operation_none && pack_to_int8x4)
+    // if int8 and B transposed and valid case, pack B
+    if(std::is_same<Ti, int8_t>{} && transB != rocblas_operation_none)
     {
         host_vector<Ti> hB_packed(hB);
 

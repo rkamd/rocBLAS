@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2016-2021 Advanced Micro Devices, Inc.
+ * Copyright 2016-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -256,6 +256,9 @@ rocblas_status rocblas_tbsv_template(rocblas_handle    handle,
 
     dim3 grid(batch_count);
     dim3 threads(BLOCK);
+
+    // Temporarily change the thread's default device ID to the handle's device ID
+    auto saved_device_id = handle->push_device_id();
 
     if(rocblas_operation_conjugate_transpose == transA)
     {

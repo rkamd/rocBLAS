@@ -1,5 +1,5 @@
 /* ************************************************************************
- * Copyright 2019-2021 Advanced Micro Devices, Inc.
+ * Copyright 2019-2020 Advanced Micro Devices, Inc.
  * ************************************************************************ */
 
 #pragma once
@@ -118,8 +118,8 @@ __launch_bounds__(DIM_X* DIM_Y) __global__ void hemvn_kernel(rocblas_fill   uplo
     if(!alpha && beta == 1)
         return;
 
-    const auto* A = cond_load_ptr_batch(alpha, Aa, hipBlockIdx_y, shifta, strideA);
-    const auto* x = cond_load_ptr_batch(alpha, xa, hipBlockIdx_y, shiftx, stridex);
+    const auto* A = alpha ? load_ptr_batch(Aa, hipBlockIdx_y, shifta, strideA) : nullptr;
+    const auto* x = alpha ? load_ptr_batch(xa, hipBlockIdx_y, shiftx, stridex) : nullptr;
 
     auto* y = load_ptr_batch(ya, hipBlockIdx_y, shifty, stridey);
 
@@ -170,6 +170,9 @@ ROCBLAS_EXPORT_NOINLINE rocblas_status rocblas_hemv_template(rocblas_handle hand
     rocblas_int          blocks      = (n - 1) / (HEMVN_DIM_X) + 1;
     dim3                 hemvn_grid(blocks, batch_count);
     dim3                 hemvn_threads(HEMVN_DIM_X, HEMVN_DIM_Y);
+
+    // Temporarily change the thread's default device ID to the handle's device ID
+    auto saved_device_id = handle->push_device_id();
 
     if(handle->pointer_mode == rocblas_pointer_mode_device)
     {
