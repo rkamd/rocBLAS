@@ -275,7 +275,7 @@ Tests:
   fortran: true
 
 - name: gemm_batched_int8_fortran
-  category: quick
+  category: known_bugs
   function:
     - gemm_batched_ex: *int8_precision
   matrix_size: *small_matrix_size_range
@@ -296,7 +296,7 @@ Tests:
   batch_count: [ -1, 0, 1, 3 ]
 
 - name: gemm_batched_small_int8
-  category: quick
+  category: known_bugs
   function:
     - gemm_batched_ex: *int8_precision
   matrix_size: *small_matrix_size_range
