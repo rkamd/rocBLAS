@@ -17,7 +17,7 @@ pip3 install -r .sphinx/requirements.txt
 
 python3 -m sphinx -T -E -b html -d _build/doctrees -D language=en . _build/html
 ```
-## TEST2 Heading
+## TEST3 Heading
 ## Prerequisites
 The [AMD ROCm install guide][4] describes how to set up the ROCm repositories
 and install the required platform dependencies.
